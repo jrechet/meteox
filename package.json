@@ -1,0 +1,15 @@
+{
+  "name": "meteox",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Météo Évolution — same-day weather across the decades for France",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.4.10"
+  }
+}
