@@ -432,6 +432,214 @@
   letter-spacing: 0.05em;
 }
 
+/* ============ Verdict normal (median/mean) ============ */
+.verdict__norm {
+  font-size: var(--text-sm);
+  color: oklch(80% 0.02 85);
+  padding-top: var(--space-2);
+  border-top: 1px solid oklch(100% 0 0 / 0.12);
+}
+.verdict__norm b {
+  color: oklch(94% 0.02 85);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ============ Tabs ============ */
+.tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--color-bg-grain);
+  border: 1px solid var(--color-line);
+  margin-bottom: var(--space-3);
+}
+.tab {
+  padding: 0.5rem 1.1rem;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: var(--text-sm);
+  color: var(--color-ink-soft);
+  transition: color var(--dur-fast) var(--ease);
+}
+.tab[aria-selected='true'] {
+  background: var(--color-surface-raised);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============ Control bar (shared slider) ============ */
+.rail--bar {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.rail--bar .rail__val {
+  gap: 0.75rem;
+}
+.chips {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding-top: var(--space-2);
+  border-top: 1px solid var(--color-line);
+}
+.chips[hidden] {
+  display: none;
+}
+.chips__lab {
+  font-size: var(--text-sm);
+  color: var(--color-ink-faint);
+  margin-right: 0.2rem;
+}
+.chip {
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  border: 1px solid var(--color-line);
+  color: var(--color-ink-soft);
+  transition: all var(--dur-fast) var(--ease);
+}
+.chip[aria-pressed='true'] {
+  background: var(--color-ink);
+  color: oklch(96% 0.02 85);
+  border-color: var(--color-ink);
+}
+.chip:hover {
+  border-color: var(--color-line-strong);
+}
+
+/* ============ Period panel ============ */
+.machine__content {
+  min-height: 200px;
+}
+.period {
+  padding: clamp(1.2rem, 0.8rem + 2vw, 2rem);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow);
+}
+.period__summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-3);
+}
+.psum {
+  display: grid;
+  gap: 0.3rem;
+}
+.psum__row {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+.psum__lab {
+  font-size: var(--text-sm);
+  color: var(--color-ink-soft);
+  min-width: 14ch;
+}
+.psum__nums {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-lg);
+}
+.psum__delta {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-weight: 600;
+}
+.psum__delta span:first-child {
+  font-family: var(--font-display);
+  font-size: var(--text-xl);
+}
+.psum__delta[data-dir='warm'] {
+  background: oklch(72% 0.13 55 / 0.16);
+  color: var(--color-accent-ink);
+}
+.psum__delta[data-dir='cold'] {
+  background: oklch(68% 0.09 235 / 0.18);
+  color: var(--color-cold-ink);
+}
+.psum__delta[data-dir='flat'] {
+  background: var(--color-bg-grain);
+  color: var(--color-ink-soft);
+}
+
+/* day-by-day strip */
+.pstrip {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding: var(--space-3) 0 0.4rem;
+  margin-top: var(--space-3);
+  border-top: 1px solid var(--color-line);
+  scroll-snap-type: x proximity;
+}
+.pcol {
+  flex: 0 0 auto;
+  width: 74px;
+  text-align: center;
+  padding: 0.6rem 0.3rem;
+  border-radius: var(--radius-sm);
+  background: var(--color-bg);
+  border: 1px solid var(--color-line);
+  scroll-snap-align: start;
+}
+.pcol__day {
+  font-size: var(--text-xs);
+  color: var(--color-ink-faint);
+  line-height: 1.25;
+}
+.pcol__day b {
+  font-size: var(--text-base);
+  color: var(--color-ink);
+}
+.pcol__glyph {
+  font-size: 1.15rem;
+  margin: 0.15rem 0;
+}
+.pcol__now {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: var(--text-lg);
+}
+.pcol__lo {
+  font-size: var(--text-xs);
+  color: var(--color-ink-faint);
+}
+.pcol__past {
+  margin-top: 0.35rem;
+  padding-top: 0.3rem;
+  border-top: 1px dashed var(--color-line-strong);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-accent-ink);
+}
+.pcol__delta {
+  margin-top: 0.15rem;
+  font-size: var(--text-xs);
+  font-weight: 700;
+}
+.pcol__delta[data-dir='warm'] {
+  color: var(--color-accent-ink);
+}
+.pcol__delta[data-dir='cold'] {
+  color: var(--color-cold-ink);
+}
+.pcol__delta[data-dir='flat'] {
+  color: var(--color-ink-faint);
+}
+
 /* ============ Trend chart ============ */
 .chart-card {
   padding: clamp(1.2rem, 0.8rem + 2vw, 2rem);
@@ -568,3 +776,292 @@ footer.foot {
     gap: 0.9rem 1.2rem;
   }
 }
+
+/* ============ Heatmap, Swatch & Layout Overrides ============ */
+.swatch--dashed {
+  background: none !important;
+  border-bottom: 2px dashed var(--color-accent) !important;
+  height: 0 !important;
+  border-radius: 0 !important;
+}
+
+.pcol {
+  width: 90px !important;
+}
+
+.pcol__group {
+  margin-top: 0.3rem;
+  padding: 0.25rem 0;
+}
+
+.pcol__group + .pcol__group {
+  border-top: 1px dashed var(--color-line-strong);
+}
+
+.pcol__year-lbl {
+  font-size: 9px;
+  color: var(--color-ink-faint);
+  font-weight: 700;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.pcol__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+}
+
+.pcol__glyph {
+  font-size: 1rem;
+  margin: 0;
+}
+
+.pcol__glyph--past {
+  color: var(--color-accent-ink);
+  opacity: 0.85;
+}
+
+.pcol__now {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.pcol__past {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--color-accent-ink);
+}
+
+.pcol__lo {
+  font-size: 9px;
+  color: var(--color-ink-faint);
+  margin-top: -1px;
+}
+
+.pcol__delta {
+  margin-top: 0.3rem;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--color-line);
+}
+
+.machine-layout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+}
+
+.machine-layout__main {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.machine-layout__side {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .machine-layout {
+    flex-direction: row;
+    align-items: stretch;
+  }
+  .machine-layout__side {
+    flex: 0 0 300px;
+  }
+}
+
+.heatmap-card {
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  height: 100%;
+  box-sizing: border-box;
+}
+
+.heatmap-card__title {
+  font-size: var(--text-base);
+  font-weight: 700;
+  color: var(--color-ink);
+  margin: 0 0 0.2rem 0;
+  text-align: center;
+}
+
+.heatmap-card__sub {
+  font-size: var(--text-xs);
+  color: var(--color-ink-faint);
+  margin: 0 0 var(--space-3) 0;
+  text-align: center;
+}
+
+.france-map {
+  flex: 1 1 auto;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 220px;
+  position: relative;
+}
+
+.france-map__svg {
+  width: 100%;
+  max-width: 240px;
+  height: auto;
+  display: block;
+}
+
+.map-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+  width: 100%;
+}
+
+.map-loading .france-map__svg {
+  opacity: 0.35;
+}
+
+.map-loading::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 28px;
+  height: 28px;
+  margin-top: -14px;
+  margin-left: -14px;
+  border: 3px solid var(--color-line);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+.map-error {
+  color: var(--color-ink-faint);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  text-align: center;
+  padding: var(--space-4) 0;
+}
+
+/* --- Stacked layout for period mode --- */
+.machine-layout--stacked {
+  flex-direction: column !important;
+  align-items: stretch !important;
+}
+
+.machine-layout__top {
+  width: 100%;
+  margin-bottom: var(--space-4);
+}
+
+.machine-layout__bottom {
+  width: 100%;
+  margin-top: var(--space-4);
+}
+
+/* --- Multi-map side-by-side layout --- */
+.heatmap-card--wide {
+  max-width: 100% !important;
+}
+
+.france-maps {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  margin: var(--space-4) 0;
+}
+
+/* Side-by-side only once there's room; stacks on narrow screens (see ≥640 media). */
+.france-maps--side {
+  justify-content: space-around;
+  align-items: stretch;
+}
+
+.france-map-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex: 1 1 0;
+  width: 100%;
+  min-width: 0;
+}
+
+.france-map-col__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  margin: 0 0 var(--space-2) 0;
+  text-align: center;
+}
+
+/* --- Responsive adjustments --- */
+@media (min-width: 640px) {
+  .france-maps {
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: stretch;
+  }
+}
+
+@media (min-width: 1024px) {
+  .machine-layout__side .france-maps {
+    flex-direction: column;
+  }
+}
+
+/* --- Period card active state --- */
+.pcol {
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease), background var(--dur-fast) var(--ease), transform var(--dur-fast) var(--ease);
+}
+
+.pcol:hover {
+  background: var(--color-bg-alt);
+  border-color: var(--color-ink-soft);
+  transform: translateY(-2px);
+}
+
+.pcol--active {
+  background: var(--color-surface) !important;
+  border-color: var(--color-accent) !important;
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
+
+/* --- Chart loading skeleton --- */
+.chart-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 280px;
+  width: 100%;
+  color: var(--color-ink-faint);
+  font-size: var(--text-sm);
+}
+
+.chart-loading .spinner {
+  margin-bottom: var(--space-3);
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--color-line);
+  border-top-color: var(--color-accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+

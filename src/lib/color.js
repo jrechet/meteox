@@ -2,12 +2,11 @@
 
 // Anchor stops in OKLCH (L, C, H). Cold blue -> neutral -> hot red.
 const STOPS = [
-  [0.0, [0.6, 0.13, 245]],
-  [0.35, [0.7, 0.08, 235]],
-  [0.5, [0.74, 0.03, 120]],
-  [0.65, [0.72, 0.13, 60]],
-  [0.85, [0.64, 0.19, 40]],
-  [1.0, [0.58, 0.21, 28]],
+  [0.0, [0.6, 0.15, 250]],   // Blue
+  [0.25, [0.68, 0.16, 142]], // Green
+  [0.5, [0.72, 0.16, 72]],   // Orange
+  [0.75, [0.58, 0.22, 28]],  // Red
+  [1.0, [0.52, 0.21, 305]],  // Violet
 ];
 
 function lerp(a, b, t) {
@@ -26,11 +25,16 @@ export function rampColor(t) {
       break;
     }
   }
-  const span = hi[0] - lo[0] || 1;
+  const span = hi[0] - lo[0];
   const k = (x - lo[0]) / span;
   const L = lerp(lo[1][0], hi[1][0], k);
   const C = lerp(lo[1][1], hi[1][1], k);
-  const H = lerp(lo[1][2], hi[1][2], k);
+  
+  let h1 = lo[1][2];
+  let h2 = hi[1][2];
+  if (h2 - h1 > 180) h1 += 360;
+  const H = lerp(h1, h2, k) % 360;
+
   return `oklch(${(L * 100).toFixed(1)}% ${C.toFixed(3)} ${H.toFixed(1)})`;
 }
 

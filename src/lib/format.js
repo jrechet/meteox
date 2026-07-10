@@ -9,15 +9,48 @@ export function isoToday() {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Parse a "YYYY-MM-DD" string to a Date at local noon.
+ * Avoids the UTC-midnight off-by-one that shifts the day in behind-UTC timezones.
+ */
+export function isoToDate(iso) {
+  return new Date(iso + 'T12:00:00');
+}
+
 /** Human date "9 juillet" from a Date or ISO string. */
 export function dayMonthLabel(date) {
+  if (!date) return '—';
   const d = typeof date === 'string' ? new Date(date + 'T12:00:00') : date;
+  if (Number.isNaN(d?.getTime())) return '—';
   return `${d.getDate()} ${MONTHS_FR[d.getMonth()]}`;
 }
 
 /** MM-DD from a Date. */
 export function monthDay(date) {
+  if (!date || Number.isNaN(date.getTime())) return '—';
   return `${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+const WEEKDAYS_FR = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+const MONTHS_ABBR_FR = [
+  'janv', 'févr', 'mars', 'avr', 'mai', 'juin',
+  'juil', 'août', 'sept', 'oct', 'nov', 'déc',
+];
+
+/** "mer" — short weekday from an ISO date. */
+export function weekdayShort(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T12:00:00');
+  if (Number.isNaN(d.getTime())) return '—';
+  return WEEKDAYS_FR[d.getDay()];
+}
+
+/** "8 juil" — compact day + abbreviated month. */
+export function shortDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso + 'T12:00:00');
+  if (Number.isNaN(d.getTime())) return '—';
+  return `${d.getDate()} ${MONTHS_ABBR_FR[d.getMonth()]}`;
 }
 
 export function fmtTemp(v, withUnit = true) {

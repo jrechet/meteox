@@ -6,6 +6,14 @@ export function mean(values) {
   return nums.reduce((a, b) => a + b, 0) / nums.length;
 }
 
+/** Median — robust central tendency, resistant to hot/cold outlier days. */
+export function median(values) {
+  const nums = values.filter((v) => v != null && !Number.isNaN(v)).sort((a, b) => a - b);
+  if (!nums.length) return null;
+  const mid = Math.floor(nums.length / 2);
+  return nums.length % 2 ? nums[mid] : (nums[mid - 1] + nums[mid]) / 2;
+}
+
 /**
  * Ordinary least-squares regression over {x, y} points.
  * Returns { slope, intercept, predict } or null when not enough data.
@@ -28,9 +36,17 @@ export function linearFit(points) {
   return { slope, intercept, predict: (x) => slope * x + intercept };
 }
 
-/** Mean of the earliest `count` (default 30) non-null years — the climate baseline. */
+/** Earliest `count` (default 30) non-null years — the climate baseline slice. */
+function baselineSlice(series, count = 30) {
+  return series.filter((d) => d.tmax != null).slice(0, count).map((d) => d.tmax);
+}
+
+/** Mean of the baseline period — the classic "normal". */
 export function baselineMean(series, count = 30) {
-  const withData = series.filter((d) => d.tmax != null);
-  const slice = withData.slice(0, count);
-  return mean(slice.map((d) => d.tmax));
+  return mean(baselineSlice(series, count));
+}
+
+/** Median of the baseline period — robust "normal". */
+export function baselineMedian(series, count = 30) {
+  return median(baselineSlice(series, count));
 }

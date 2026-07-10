@@ -2,9 +2,11 @@
 import {
   dayMonthLabel, fmtTemp, fmtSigned, fmtMm, fmtWind, describeWeather,
 } from '../lib/format.js';
-import { baselineMean, linearFit } from '../lib/stats.js';
+import { baselineMean, baselineMedian, linearFit } from '../lib/stats.js';
 import { rampColor, normalize } from '../lib/color.js';
 import { renderChart } from './chart.js';
+import { periodHTML } from './period.js';
+import { heatmapContainerHTML } from './heatmap.js';
 
 export function viewLoading(msg = 'Localisation en cours…') {
   return `<div class="state" role="status">
@@ -24,19 +26,22 @@ export function viewError(msg, { retry = true } = {}) {
 // ---- derived model shared by hero + focus ----
 export function derive(state) {
   const { series, today } = state;
-  const temps = series.filter((d) => d.tmax != null).map((d) => d.tmax);
-  const loT = Math.min(...temps, today.tmax ?? Infinity);
-  const hiT = Math.max(...temps, today.tmax ?? -Infinity);
-  const baseline = baselineMean(series, 30);
-  const fit = linearFit(series.map((d) => ({ x: d.year, y: d.tmax })));
+  const hasHistory = series && series.length > 0;
+
+  const temps = hasHistory ? series.filter((d) => d.tmax != null).map((d) => d.tmax) : [];
+  const loT = temps.length > 0 ? Math.min(...temps, today.tmax ?? Infinity) : today.tmax;
+  const hiT = temps.length > 0 ? Math.max(...temps, today.tmax ?? -Infinity) : today.tmax;
+  const baseline = hasHistory ? baselineMean(series, 30) : null;
+  const baselineMed = hasHistory ? baselineMedian(series, 30) : null;
+  const fit = hasHistory ? linearFit(series.map((d) => ({ x: d.year, y: d.tmax }))) : null;
   const perDecade = fit ? fit.slope * 10 : null;
-  const firstYear = series[0]?.year;
-  const lastYear = series[series.length - 1]?.year;
+  const firstYear = hasHistory ? series[0]?.year : 1940;
+  const lastYear = hasHistory ? series[series.length - 1]?.year : new Date().getFullYear();
   // climate signal = trend-line rise across the whole record (not today's weather noise)
   const climateRise = fit ? fit.predict(lastYear) - fit.predict(firstYear) : null;
   // daily anomaly = today's max vs the 30-yr normal for this calendar day (weather, not climate)
   const vsNormal = baseline != null && today.tmax != null ? today.tmax - baseline : null;
-  return { loT, hiT, baseline, fit, perDecade, climateRise, vsNormal, firstYear, lastYear };
+  return { loT, hiT, baseline, baselineMed, fit, perDecade, climateRise, vsNormal, firstYear, lastYear };
 }
 
 function metric(k, v) {
@@ -82,13 +87,46 @@ function heroHTML(state, d) {
       <p class="verdict__ey">Le réchauffement de ce jour</p>
       <p class="verdict__big" data-dir="${dir}">${d.climateRise == null ? '—' : fmtSigned(d.climateRise) + '°'}</p>
       <p class="verdict__sub">${climateTxt} ${decadeTxt}</p>
+      ${
+        d.baseline == null
+          ? ''
+          : `<p class="verdict__norm">Normale ${d.firstYear}–${d.firstYear + 29} · médiane <b>${fmtTemp(d.baselineMed)}</b> · moyenne <b>${fmtTemp(d.baseline)}</b></p>`
+      }
     </aside>
   </section>`;
 }
 
+// ---- machine section content (swaps between Jour même / Période) ----
+export function machineContentHTML(state, d) {
+  const heatmap = heatmapContainerHTML(state);
+  const showDualMaps =
+    (state.mode === 'period' && state.dateSelected) ||
+    (state.mode === 'day' && state.selectedYear !== state.currentYear);
+
+  const content = state.mode === 'period'
+    ? periodHTML(state)
+    : `<article class="focus" data-role="focus">${focusHTML(state, d, state.selectedYear)}</article>`;
+
+  if (showDualMaps) {
+    return `
+      <div class="machine-layout machine-layout--stacked">
+        <div class="machine-layout__top">${heatmap}</div>
+        <div class="machine-layout__main">${content}</div>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="machine-layout">
+      <div class="machine-layout__main">${content}</div>
+      <div class="machine-layout__side">${heatmap}</div>
+    </div>
+  `;
+}
+
 // ---- focus card for a given year ----
 export function focusHTML(state, d, year) {
-  const rec = state.series.find((s) => s.year === year) ?? { year };
+  const rec = (state.series && state.series.find((s) => s.year === year)) ?? { year };
   const w = describeWeather(rec.code);
   const ago = state.currentYear - year;
   const delta = rec.tmax != null && state.today.tmax != null ? rec.tmax - state.today.tmax : null;
@@ -145,24 +183,38 @@ export function viewApp(state) {
 
     <section class="section" aria-label="Machine à remonter le temps">
       <div class="section__head">
-        <h2 class="section__title reveal">Le même jour, remonté année après année</h2>
-        <p class="section__note reveal">Glissez pour voyager de ${d.firstYear} à ${d.lastYear}. La météo du ${state.dayLabel} de chaque année, comparée à aujourd’hui.</p>
+        <h2 class="section__title reveal">Remontez le temps, un curseur à la main</h2>
+        <p class="section__note reveal">Comparez à aujourd’hui&nbsp;: soit le <b>jour même</b> ${state.dayLabel}, soit une <b>période</b> — les derniers jours contre les mêmes jours d’une année passée.</p>
       </div>
-      <div class="machine">
-        <article class="focus reveal" data-role="focus">${focusHTML(state, d, sel)}</article>
-        <div class="rail reveal">
-          <div class="rail__val">
-            <span class="rail__now tabular" data-role="rail-year">${sel}</span>
-            <span class="rail__hint">glissez le curseur</span>
-          </div>
-          <input class="slider" type="range" min="${d.firstYear}" max="${d.lastYear}" step="1"
-                 value="${sel}" data-role="slider"
-                 aria-label="Année" aria-valuemin="${d.firstYear}" aria-valuemax="${d.lastYear}" />
-          <div class="rail__scale">
-            <span>${d.firstYear}</span><span>${Math.round((d.firstYear + d.lastYear) / 2)}</span><span>${d.lastYear}</span>
-          </div>
+
+      <div class="tabs reveal" role="tablist" aria-label="Mode de comparaison">
+        <button class="tab" role="tab" data-tab="day" aria-selected="${state.mode !== 'period'}">Jour même</button>
+        <button class="tab" role="tab" data-tab="period" aria-selected="${state.mode === 'period'}" ${state.historyLoaded ? '' : 'disabled style="opacity: 0.6; cursor: not-allowed;"'}>Période ${state.historyLoaded ? '' : '(Chargement...)'}</button>
+      </div>
+
+      <div class="rail rail--bar reveal">
+        <div class="rail__val">
+          <span class="rail__now tabular" data-role="rail-year">${sel}</span>
+          <span class="rail__hint">glissez pour changer d’année</span>
+        </div>
+        <input class="slider" type="range" min="${d.firstYear}" max="${d.lastYear}" step="1"
+               value="${sel}" data-role="slider" ${state.historyLoaded ? '' : 'disabled'}
+               aria-label="Année" aria-valuemin="${d.firstYear}" aria-valuemax="${d.lastYear}" aria-valuenow="${sel}" />
+        <div class="rail__scale">
+          <span>${d.firstYear}</span><span>${Math.round((d.firstYear + d.lastYear) / 2)}</span><span>${d.lastYear}</span>
+        </div>
+        <div class="chips" data-role="window-chips" role="group" aria-label="Longueur de la période"${state.mode === 'period' ? '' : ' hidden'}>
+          <span class="chips__lab">Période&nbsp;:</span>
+          ${[5, 10, 30]
+            .map(
+              (n) =>
+                `<button class="chip" data-win="${n}" aria-pressed="${state.windowLen === n}">${n} jours</button>`,
+            )
+            .join('')}
         </div>
       </div>
+
+      <div class="machine__content reveal" data-role="machine-content">${machineContentHTML(state, d)}</div>
     </section>
 
     <section class="section" aria-label="Tendance sur les décennies">
@@ -171,11 +223,16 @@ export function viewApp(state) {
         <p class="section__note reveal">Température maximale du ${state.dayLabel}, chaque année. La ligne pointillée est la tendance de fond.</p>
       </div>
       <div class="chart-card reveal">
-        <div class="chart-wrap" data-role="chart">${renderChart(state.series, sel)}</div>
+        <div class="chart-wrap" data-role="chart">
+          ${state.historyLoaded
+            ? renderChart(state.series, sel)
+            : `<div class="chart-loading"><div class="spinner"></div><p>Chargement des 85 ans d'historique...</p></div>`}
+        </div>
         <div class="chart-legend">
           <span><i class="dot-sample" style="background:${rampColor(0.15)}"></i> jour plus frais</span>
           <span><i class="dot-sample" style="background:${rampColor(0.9)}"></i> jour plus chaud</span>
           <span><i class="swatch" style="background:var(--color-accent)"></i> tendance longue durée</span>
+          <span><i class="swatch" style="background:var(--color-ink-soft);opacity:.6"></i> médiane</span>
         </div>
       </div>
     </section>

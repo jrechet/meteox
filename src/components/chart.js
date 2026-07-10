@@ -1,6 +1,6 @@
 // Hand-rolled SVG trend chart — tmax of one calendar day across the decades.
 import { rampColor, normalize } from '../lib/color.js';
-import { linearFit } from '../lib/stats.js';
+import { linearFit, median } from '../lib/stats.js';
 
 const W = 960;
 const H = 380;
@@ -54,6 +54,16 @@ export function renderChart(series, selectedYear) {
     xTicks.push(`<text x="${x.toFixed(1)}" y="${H - 12}" class="ax ax--x">${yr}</text>`);
   }
 
+  // --- median reference (robust "normal") ---
+  const med = median(temps);
+  let medLine = '';
+  if (med != null) {
+    const y = yOf(med);
+    medLine =
+      `<line x1="${PAD.left}" y1="${y.toFixed(1)}" x2="${W - PAD.right}" y2="${y.toFixed(1)}" class="median"/>` +
+      `<text x="${W - PAD.right}" y="${(y - 6).toFixed(1)}" class="ax ax--med">médiane ${Math.round(med)}°</text>`;
+  }
+
   // --- regression line ---
   let trendLine = '';
   if (fit) {
@@ -105,6 +115,8 @@ export function renderChart(series, selectedYear) {
         .ax--x { text-anchor: middle; }
         .ax--sel { text-anchor: middle; fill: var(--color-ink); font-weight: 600; }
         .trend { stroke: var(--color-accent); stroke-width: 2.5; stroke-dasharray: 2 7; stroke-linecap: round; }
+        .median { stroke: var(--color-ink-soft); stroke-width: 1.5; opacity: 0.5; }
+        .ax--med { text-anchor: end; fill: var(--color-ink-soft); font-weight: 600; }
         .guide { stroke: var(--color-line-strong); stroke-width: 1.5; stroke-dasharray: 3 4; }
         .spark { fill: none; stroke: var(--color-ink-soft); stroke-width: 1.4; opacity: 0.35; }
       </style>
@@ -112,6 +124,7 @@ export function renderChart(series, selectedYear) {
       ${xTicks.join('')}
       ${guide}
       <path d="${path}" class="spark"/>
+      ${medLine}
       ${trendLine}
       ${dots}
     </svg>`;
