@@ -1,6 +1,13 @@
-import { FRANCE_PATHS } from './france-paths.js';
 import { monthDay, dayMonthLabel, isoToDate } from '../lib/format.js';
 import { heatColor, HEAT_LEGEND } from '../lib/color.js';
+
+// France SVG outline is ~46KB — dynamically imported so it stays out of the
+// critical bundle. Cached module-side once loaded.
+let FRANCE_PATHS = null;
+export async function preloadFrancePaths() {
+  if (!FRANCE_PATHS) FRANCE_PATHS = (await import('./france-paths.js')).FRANCE_PATHS;
+  return FRANCE_PATHS;
+}
 
 
 const lonMin = -5.5;
@@ -56,6 +63,9 @@ function legendHTML() {
 }
 
 export function renderMapSVG(data, year) {
+  // France outline still loading (lazy chunk) — show a placeholder until ready.
+  if (!FRANCE_PATHS) return '<div class="map-placeholder"><div class="spinner"></div></div>';
+
   // Generate visual heatmap blur glow circles
   const glowSpots = data.map((city) => {
     const { x, y } = project(city.lat, city.lon, city.name);
@@ -81,8 +91,10 @@ export function renderMapSVG(data, year) {
       labelX = x - 10;
       textAnchor = 'end';
     } else if (city.name === 'Ajaccio') {
-      labelX = x - 10;
-      textAnchor = 'end';
+      // below the Corsica dot so the label clears the island outline
+      labelX = x;
+      labelY = y + 18;
+      textAnchor = 'middle';
     } else if (city.name === 'Lille') {
       labelY = y - 8;
       labelX = x;

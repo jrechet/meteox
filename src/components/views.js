@@ -3,7 +3,7 @@ import {
   dayMonthLabel, fmtTemp, fmtSigned, fmtMm, fmtWind, describeWeather,
 } from '../lib/format.js';
 import { baselineMean, baselineMedian, linearFit } from '../lib/stats.js';
-import { heatColor } from '../lib/color.js';
+import { heatColor, heatGradient } from '../lib/color.js';
 import { renderChart } from './chart.js';
 import { periodHTML } from './period.js';
 import { heatmapContainerHTML } from './heatmap.js';
@@ -187,8 +187,11 @@ export function viewApp(state) {
       </div>
 
       <div class="tabs reveal" role="tablist" aria-label="Mode de comparaison">
-        <button class="tab" role="tab" data-tab="day" aria-selected="${state.mode !== 'period'}">Jour même</button>
-        <button class="tab" role="tab" data-tab="period" aria-selected="${state.mode === 'period'}" ${state.historyLoaded ? '' : 'disabled style="opacity: 0.6; cursor: not-allowed;"'}>Période ${state.historyLoaded ? '' : '(Chargement...)'}</button>
+        <button class="tab" role="tab" id="tab-day" aria-controls="machine-panel" data-tab="day"
+                aria-selected="${state.mode !== 'period'}" tabindex="${state.mode !== 'period' ? '0' : '-1'}">Jour même</button>
+        <button class="tab" role="tab" id="tab-period" aria-controls="machine-panel" data-tab="period"
+                aria-selected="${state.mode === 'period'}" tabindex="${state.mode === 'period' ? '0' : '-1'}"
+                ${state.historyLoaded ? '' : 'disabled style="opacity: 0.6; cursor: not-allowed;"'}>Période ${state.historyLoaded ? '' : '(Chargement...)'}</button>
       </div>
 
       <div class="rail rail--bar reveal">
@@ -213,7 +216,8 @@ export function viewApp(state) {
         </div>
       </div>
 
-      <div class="machine__content reveal" data-role="machine-content">${machineContentHTML(state, d)}</div>
+      <div class="machine__content reveal" data-role="machine-content" id="machine-panel"
+           role="tabpanel" aria-labelledby="tab-${state.mode}">${machineContentHTML(state, d)}</div>
     </section>
 
     <section class="section" aria-label="Tendance sur les décennies">
@@ -228,8 +232,7 @@ export function viewApp(state) {
             : `<div class="chart-loading"><div class="spinner"></div><p>Chargement des 85 ans d'historique...</p></div>`}
         </div>
         <div class="chart-legend">
-          <span><i class="dot-sample" style="background:${heatColor(12)}"></i> jour plus frais</span>
-          <span><i class="dot-sample" style="background:${heatColor(34)}"></i> jour plus chaud</span>
+          <span><i class="scale-bar" style="background:${heatGradient()}"></i> froid → chaud (°C)</span>
           <span><i class="swatch" style="background:var(--color-accent)"></i> tendance longue durée</span>
           <span><i class="swatch" style="background:var(--color-ink-soft);opacity:.6"></i> médiane</span>
         </div>

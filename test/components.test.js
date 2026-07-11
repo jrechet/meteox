@@ -1,7 +1,12 @@
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, beforeAll } from 'vitest';
 import { renderChart } from '../src/components/chart.js';
 import { periodHTML } from '../src/components/period.js';
-import { project, getHeatColor, renderMapSVG, heatmapContainerHTML } from '../src/components/heatmap.js';
+import { project, getHeatColor, renderMapSVG, heatmapContainerHTML, preloadFrancePaths } from '../src/components/heatmap.js';
+
+// maps render a placeholder until the lazy France-outline chunk is loaded
+beforeAll(async () => {
+  await preloadFrancePaths();
+});
 import { derive, focusHTML, machineContentHTML, viewApp } from '../src/components/views.js';
 import { heatColor } from '../src/lib/color.js';
 

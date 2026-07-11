@@ -44,6 +44,12 @@ export function heatColor(tempC) {
   return `oklch(${(L * 100).toFixed(1)}% ${C.toFixed(3)} ${H.toFixed(1)})`;
 }
 
+/** CSS linear-gradient spanning the shared thermal scale (cold -> hot). */
+export function heatGradient() {
+  const stops = [8, 16, 24, 32, 40].map((t) => heatColor(t)).join(', ');
+  return `linear-gradient(90deg, ${stops})`;
+}
+
 /** Legend buckets for the shared scale — { label, temp } pairs. */
 export const HEAT_LEGEND = [
   { label: '≤10°', temp: 8 },

@@ -682,6 +682,13 @@
   border-radius: 50%;
   display: inline-block;
 }
+.scale-bar {
+  width: 40px;
+  height: 8px;
+  border-radius: 4px;
+  display: inline-block;
+  vertical-align: middle;
+}
 
 /* ============ States ============ */
 .state {
@@ -867,10 +874,10 @@ footer.foot {
 @media (min-width: 1024px) {
   .machine-layout {
     flex-direction: row;
-    align-items: stretch;
+    align-items: flex-start;
   }
   .machine-layout__side {
-    flex: 0 0 300px;
+    flex: 0 0 340px;
   }
 }
 
@@ -915,7 +922,7 @@ footer.foot {
 
 .france-map__svg {
   width: 100%;
-  max-width: 240px;
+  max-width: 340px;
   height: auto;
   display: block;
 }

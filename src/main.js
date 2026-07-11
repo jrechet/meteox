@@ -4,7 +4,7 @@ import { currentPosition, reverseName, searchPlaces } from './lib/geo.js';
 import { fetchToday, fetchRecent, fetchHistory, fetchHeatmap, MAX_WINDOW } from './lib/weather.js';
 import { viewLoading, viewError, viewApp, derive, machineContentHTML } from './components/views.js';
 import { renderChart } from './components/chart.js';
-import { heatmapContainerHTML } from './components/heatmap.js';
+import { heatmapContainerHTML, preloadFrancePaths } from './components/heatmap.js';
 
 const PARIS = { name: 'Paris', admin: 'Île-de-France', lat: 48.8566, lon: 2.3522 };
 const root = document.getElementById('app');
@@ -63,7 +63,10 @@ async function load(location) {
     bindApp();
     revealOnScroll();
 
-    // 3. Pre-fetch heatmap for the current date/year
+    // 3. Load the lazy France-outline chunk, then re-draw the map once it lands
+    preloadFrancePaths().then(refreshHeatmapUI);
+
+    // 4. Pre-fetch heatmap for the current date/year
     const dayMmdd = monthDay(isoToDate(state.selectedIso));
     loadHeatmap(state.currentYear, dayMmdd);
 
