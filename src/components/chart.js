@@ -1,5 +1,5 @@
 // Hand-rolled SVG trend chart — tmax of one calendar day across the decades.
-import { rampColor, normalize } from '../lib/color.js';
+import { heatColor } from '../lib/color.js';
 import { linearFit, median } from '../lib/stats.js';
 
 const W = 960;
@@ -84,7 +84,7 @@ export function renderChart(series, selectedYear) {
     .map((d) => {
       const cx = xOf(d.year);
       const cy = yOf(d.tmax);
-      const col = rampColor(normalize(d.tmax, loT, hiT));
+      const col = heatColor(d.tmax);
       const sel = d.year === selectedYear;
       return (
         `<circle cx="${cx.toFixed(1)}" cy="${cy.toFixed(1)}" r="${sel ? 7 : 3.2}" ` +

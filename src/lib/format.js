@@ -61,6 +61,8 @@ export function fmtTemp(v, withUnit = true) {
 export function fmtSigned(v, digits = 1) {
   if (v == null || Number.isNaN(v)) return '—';
   const s = v.toFixed(digits);
+  // Avoid a misleading "-0.0" (or "+0.0") when the value rounds to zero.
+  if (parseFloat(s) === 0) return (0).toFixed(digits);
   return v > 0 ? `+${s}` : s;
 }
 

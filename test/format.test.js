@@ -100,6 +100,12 @@ describe('format helpers', () => {
       expect(fmtSigned(-1.234, 0)).toBe('-1');
     });
 
+    test('never shows a signed zero when the value rounds to 0', () => {
+      expect(fmtSigned(-0.04)).toBe('0.0');
+      expect(fmtSigned(0.04)).toBe('0.0');
+      expect(fmtSigned(-0.4, 0)).toBe('0');
+    });
+
     test('returns fallback for invalid values', () => {
       expect(fmtSigned(null)).toBe('—');
     });

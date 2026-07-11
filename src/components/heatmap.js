@@ -1,5 +1,6 @@
 import { FRANCE_PATHS } from './france-paths.js';
 import { monthDay, dayMonthLabel, isoToDate } from '../lib/format.js';
+import { heatColor, HEAT_LEGEND } from '../lib/color.js';
 
 
 const lonMin = -5.5;
@@ -41,54 +42,17 @@ export function project(lat, lon, name) {
   return { x, y };
 }
 
-function lerp(a, b, t) {
-  return a + (b - a) * t;
+/** Absolute-temperature color — delegates to the app-wide shared scale. */
+export function getHeatColor(temp) {
+  return heatColor(temp);
 }
 
-export function getHeatColor(temp) {
-  if (temp == null || Number.isNaN(temp)) return 'oklch(0.7 0.02 120)';
-
-  const t = Math.max(5, Math.min(45, temp));
-
-  const STOPS = [
-    [10, [0.6, 0.15, 250]],   // Blue (<10)
-    [20, [0.68, 0.16, 142]],  // Green (<20)
-    [30, [0.72, 0.16, 72]],   // Orange (30)
-    [40, [0.58, 0.22, 28]],   // Red (40)
-    [45, [0.52, 0.21, 305]]   // Violet (>40)
-  ];
-
-  if (t <= STOPS[0][0]) {
-    return `oklch(${(STOPS[0][1][0] * 100).toFixed(1)}% ${STOPS[0][1][1].toFixed(3)} ${STOPS[0][1][2].toFixed(1)})`;
-  }
-  if (t >= STOPS[STOPS.length - 1][0]) {
-    return `oklch(${(STOPS[STOPS.length - 1][1][0] * 100).toFixed(1)}% ${STOPS[STOPS.length - 1][1][1].toFixed(3)} ${STOPS[STOPS.length - 1][1][2].toFixed(1)})`;
-  }
-
-  let lo = STOPS[0];
-  let hi = STOPS[STOPS.length - 1];
-  for (let i = 0; i < STOPS.length - 1; i++) {
-    if (t >= STOPS[i][0] && t <= STOPS[i + 1][0]) {
-      lo = STOPS[i];
-      hi = STOPS[i + 1];
-      break;
-    }
-  }
-
-  const k = (t - lo[0]) / (hi[0] - lo[0]);
-  const L = lerp(lo[1][0], hi[1][0], k);
-  const C = lerp(lo[1][1], hi[1][1], k);
-
-  let h1 = lo[1][2];
-  let h2 = hi[1][2];
-  if (Math.abs(h2 - h1) > 180) {
-    if (h2 > h1) h1 += 360;
-    else h2 += 360;
-  }
-  let H = lerp(h1, h2, k) % 360;
-  if (H < 0) H += 360;
-
-  return `oklch(${(L * 100).toFixed(1)}% ${C.toFixed(3)} ${H.toFixed(1)})`;
+/** Legend row markup, generated from the shared scale so it can't drift. */
+function legendHTML() {
+  return HEAT_LEGEND.map(
+    ({ label, temp }) =>
+      `<span class="map-legend__item"><i class="dot-sample" style="background:${heatColor(temp)}"></i> ${label}</span>`,
+  ).join('');
 }
 
 export function renderMapSVG(data, year) {
@@ -202,13 +166,7 @@ export function heatmapContainerHTML(state) {
         <div class="france-map" data-role="france-map-container">
           ${inner}
         </div>
-        <div class="map-legend">
-          <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.6 0.15 250)"></i> &lt;10°</span>
-          <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.68 0.16 142)"></i> &lt;20°</span>
-          <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.72 0.16 72)"></i> 30°</span>
-          <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.58 0.22 28)"></i> 40°</span>
-          <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.52 0.21 305)"></i> &gt;40°</span>
-        </div>
+        <div class="map-legend">${legendHTML()}</div>
       </article>
     `;
   }
@@ -247,13 +205,7 @@ export function heatmapContainerHTML(state) {
         </div>
       </div>
 
-      <div class="map-legend">
-        <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.6 0.15 250)"></i> &lt;10°</span>
-        <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.68 0.16 142)"></i> &lt;20°</span>
-        <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.72 0.16 72)"></i> 30°</span>
-        <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.58 0.22 28)"></i> 40°</span>
-        <span class="map-legend__item"><i class="dot-sample" style="background:oklch(0.52 0.21 305)"></i> &gt;40°</span>
-      </div>
+      <div class="map-legend">${legendHTML()}</div>
     </article>
   `;
 }

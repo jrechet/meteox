@@ -3,7 +3,7 @@ import {
   dayMonthLabel, fmtTemp, fmtSigned, fmtMm, fmtWind, describeWeather,
 } from '../lib/format.js';
 import { baselineMean, baselineMedian, linearFit } from '../lib/stats.js';
-import { rampColor, normalize } from '../lib/color.js';
+import { heatColor } from '../lib/color.js';
 import { renderChart } from './chart.js';
 import { periodHTML } from './period.js';
 import { heatmapContainerHTML } from './heatmap.js';
@@ -52,8 +52,7 @@ function metric(k, v) {
 function heroHTML(state, d) {
   const { today, dayLabel } = state;
   const w = describeWeather(today.code);
-  const tNorm = normalize(today.tmax, d.loT, d.hiT);
-  const glow = rampColor(tNorm);
+  const glow = heatColor(today.tmax);
   const dir = d.climateRise == null ? 'flat' : d.climateRise > 0.3 ? 'warm' : d.climateRise < -0.3 ? 'cold' : 'flat';
 
   const climateTxt =
@@ -229,8 +228,8 @@ export function viewApp(state) {
             : `<div class="chart-loading"><div class="spinner"></div><p>Chargement des 85 ans d'historique...</p></div>`}
         </div>
         <div class="chart-legend">
-          <span><i class="dot-sample" style="background:${rampColor(0.15)}"></i> jour plus frais</span>
-          <span><i class="dot-sample" style="background:${rampColor(0.9)}"></i> jour plus chaud</span>
+          <span><i class="dot-sample" style="background:${heatColor(12)}"></i> jour plus frais</span>
+          <span><i class="dot-sample" style="background:${heatColor(34)}"></i> jour plus chaud</span>
           <span><i class="swatch" style="background:var(--color-accent)"></i> tendance longue durée</span>
           <span><i class="swatch" style="background:var(--color-ink-soft);opacity:.6"></i> médiane</span>
         </div>
