@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'vitest';
-import { heatColor, HEAT_LEGEND } from '../src/lib/color.js';
+import { heatColor, HEAT_LEGEND, divergingColor } from '../src/lib/color.js';
 
 describe('color helpers', () => {
   describe('heatColor', () => {
@@ -35,6 +35,23 @@ describe('color helpers', () => {
       expect(neutral).toBe(heatColor(undefined));
       expect(neutral).toBe(heatColor(NaN));
       expect(neutral).toMatch(/^oklch\(/);
+    });
+  });
+
+  describe('divergingColor', () => {
+    test('neutral around zero, blue for cooler, red for warmer', () => {
+      const cool = divergingColor(-8);
+      const warm = divergingColor(8);
+      const hueOf = (c) => parseFloat(c.split(' ')[2]);
+      expect(hueOf(cool)).toBeGreaterThan(150); // cool side (blue/cyan)
+      expect(hueOf(warm)).toBeLessThan(60); // warm side (red/orange)
+      expect(divergingColor(0)).toMatch(/^oklch\(/);
+    });
+
+    test('clamps extreme anomalies and handles null', () => {
+      expect(divergingColor(-99)).toBe(divergingColor(-12));
+      expect(divergingColor(99)).toBe(divergingColor(12));
+      expect(divergingColor(null)).toMatch(/^oklch\(/);
     });
   });
 

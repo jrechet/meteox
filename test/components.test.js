@@ -87,6 +87,17 @@ describe('periodHTML', () => {
     const html = periodHTML(makeState({ mode: 'period', selectedYear: 2026 }));
     expect(html).not.toContain('-0.0°'); // fmtSigned must not emit a signed zero
   });
+
+  test('metric toggle switches the plotted measure (temp/pluie/vent)', () => {
+    const temp = periodHTML(makeState({ mode: 'period', periodMetric: 'tmax' }));
+    expect(temp).toContain('data-metric="precip"');
+    expect(temp).toContain('data-metric="wind"');
+    expect(temp).toMatch(/data-metric="tmax" aria-pressed="true"/);
+
+    const wind = periodHTML(makeState({ mode: 'period', periodMetric: 'wind' }));
+    expect(wind).toMatch(/data-metric="wind" aria-pressed="true"/);
+    expect(wind).toContain('km/h'); // summary uses the wind formatter
+  });
 });
 
 // ---------- heatmap ----------
@@ -110,6 +121,30 @@ describe('heatmap', () => {
     expect(svg).toContain('<svg');
     expect(svg).toContain('Paris (2026)');
     expect(svg).not.toContain('Brest (2026)'); // null temp -> no marker
+  });
+
+  test('renderMapSVG anomaly mode shows the signed delta vs a reference year', () => {
+    const data = [{ name: 'Paris', lat: 48.85, lon: 2.35, tmax: 30, code: 1 }];
+    const svg = renderMapSVG(data, 2026, { ref: { Paris: 22 }, refYear: 1976 });
+    expect(svg).toContain('+8'); // 30 - 22 = +8 shown on the dot
+    expect(svg).toContain('vs 1976');
+  });
+
+  test('dual maps expose an Absolu/Écart toggle', () => {
+    const dual = heatmapContainerHTML(
+      makeState({
+        mode: 'period',
+        dateSelected: true,
+        selectedYear: 1976,
+        heatmaps: {
+          '2026:07-10': [{ name: 'Paris', lat: 48.85, lon: 2.35, tmax: 30, code: 1 }],
+          '1976:07-10': [{ name: 'Paris', lat: 48.85, lon: 2.35, tmax: 22, code: 1 }],
+        },
+        selectedIso: '2026-07-10',
+      }),
+    );
+    expect(dual).toContain('data-mapmode="abs"');
+    expect(dual).toContain('data-mapmode="anom"');
   });
 
   test('single map in day mode, dual maps when a date is selected in période', () => {

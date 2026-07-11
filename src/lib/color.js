@@ -44,6 +44,26 @@ export function heatColor(tempC) {
   return `oklch(${(L * 100).toFixed(1)}% ${C.toFixed(3)} ${H.toFixed(1)})`;
 }
 
+// Diverging scale for anomalies (Δ°C): cooler = blue, ~0 = neutral, warmer = red.
+const ANOM_MAX = 12;
+const ANOM_STOPS = [
+  [-ANOM_MAX, [0.62, 0.13, 250]],
+  [0, [0.9, 0.02, 95]],
+  [ANOM_MAX, [0.57, 0.21, 30]],
+];
+
+/** Temperature anomaly (Δ°C) -> "oklch(...)" on the diverging scale. */
+export function divergingColor(delta) {
+  if (delta == null || Number.isNaN(delta)) return NEUTRAL;
+  const t = clamp(delta, -ANOM_MAX, ANOM_MAX);
+  const [lo, hi] = t <= 0 ? [ANOM_STOPS[0], ANOM_STOPS[1]] : [ANOM_STOPS[1], ANOM_STOPS[2]];
+  const k = (t - lo[0]) / (hi[0] - lo[0] || 1);
+  const L = lerp(lo[1][0], hi[1][0], k);
+  const C = lerp(lo[1][1], hi[1][1], k);
+  const H = lerp(lo[1][2], hi[1][2], k);
+  return `oklch(${(L * 100).toFixed(1)}% ${C.toFixed(3)} ${H.toFixed(1)})`;
+}
+
 /** CSS linear-gradient spanning the shared thermal scale (cold -> hot). */
 export function heatGradient() {
   const stops = [8, 16, 24, 32, 40].map((t) => heatColor(t)).join(', ');

@@ -1,5 +1,5 @@
 import { monthDay, dayMonthLabel, isoToDate } from '../lib/format.js';
-import { heatColor, HEAT_LEGEND } from '../lib/color.js';
+import { heatColor, HEAT_LEGEND, divergingColor } from '../lib/color.js';
 
 // France SVG outline is ~46KB — dynamically imported so it stays out of the
 // critical bundle. Cached module-side once loaded.
@@ -62,15 +62,20 @@ function legendHTML() {
   ).join('');
 }
 
-export function renderMapSVG(data, year) {
+export function renderMapSVG(data, year, opts = {}) {
   // France outline still loading (lazy chunk) — show a placeholder until ready.
   if (!FRANCE_PATHS) return '<div class="map-placeholder"><div class="spinner"></div></div>';
+
+  // Anomaly mode: color each city by its Δ vs the reference year (opts.ref = {name: tmax}).
+  const ref = opts.ref || null;
+  const anomOf = (city) => (ref && city.tmax != null && ref[city.name] != null ? city.tmax - ref[city.name] : null);
+  const colorFor = (city) => (ref ? divergingColor(anomOf(city)) : getHeatColor(city.tmax));
 
   // Generate visual heatmap blur glow circles
   const glowSpots = data.map((city) => {
     const { x, y } = project(city.lat, city.lon, city.name);
     if (city.tmax == null) return '';
-    const color = getHeatColor(city.tmax);
+    const color = colorFor(city);
     // Large blurred circles that overlap to form continuous heat zones
     return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="70" fill="${color}" opacity="0.32" filter="url(#blur-filter)" />`;
   }).join('');
@@ -79,7 +84,7 @@ export function renderMapSVG(data, year) {
   const dots = data.map((city) => {
     const { x, y } = project(city.lat, city.lon, city.name);
     if (city.tmax == null) return '';
-    const tempColor = getHeatColor(city.tmax);
+    const tempColor = colorFor(city);
 
     // Label position offsets for reference cities (so they don't overlap)
     const showLabel = ['Paris', 'Lille', 'Strasbourg', 'Brest', 'Lyon', 'Bordeaux', 'Marseille', 'Ajaccio'].includes(city.name);
@@ -105,12 +110,19 @@ export function renderMapSVG(data, year) {
       ? `<text x="${labelX.toFixed(1)}" y="${labelY.toFixed(1)}" text-anchor="${textAnchor}" class="map__city-lbl">${city.name}</text>`
       : '';
 
+    const a = anomOf(city);
+    const signed = (v) => (v > 0 ? '+' : '') + Math.round(v);
+    const dotNum = ref ? (a == null ? '—' : signed(a)) : Math.round(city.tmax);
+    const titleText = ref
+      ? `${city.name} : ${a == null ? '—' : signed(a) + '° vs ' + opts.refYear} (${Math.round(city.tmax)}° en ${year})`
+      : `${city.name} (${year}) : ${Math.round(city.tmax)}°C`;
+
     return `
       <g class="map__dot-group">
         <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7.5" fill="${tempColor}" class="map__dot">
-          <title>${city.name} (${year}) : ${Math.round(city.tmax)}°C</title>
+          <title>${titleText}</title>
         </circle>
-        <text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="map__temp-lbl">${Math.round(city.tmax)}</text>
+        <text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="map__temp-lbl">${dotNum}</text>
         ${label}
       </g>
     `;
@@ -120,7 +132,14 @@ export function renderMapSVG(data, year) {
   const mainlandPaths = FRANCE_PATHS.slice(1);
   const separatorPath = FRANCE_PATHS[0];
 
+  // Screen-reader fallback: the SVG is decorative to AT; expose the data as text.
+  const srSummary = `<ul class="sr-only">${data
+    .filter((c) => c.tmax != null)
+    .map((c) => `<li>${c.name} : ${Math.round(c.tmax)}°C en ${year}</li>`)
+    .join('')}</ul>`;
+
   return `
+    ${srSummary}
     <svg viewBox="0 0 492 543" class="france-map__svg" role="img" aria-label="Carte des températures de la France en ${year}">
       <defs>
         <filter id="blur-filter" x="-50%" y="-50%" width="200%" height="200%">
@@ -186,25 +205,36 @@ export function heatmapContainerHTML(state) {
   // Dual map mode (Période)
   const currentData = state.heatmaps?.[`${state.currentYear}:${dayMmdd}`];
   const pastData = state.heatmaps?.[`${yr}:${dayMmdd}`];
+  const placeholder = '<div class="map-placeholder"><div class="spinner"></div></div>';
 
-  // Left map: Current Year (e.g. 2026)
+  // "Écart" colors the current-year map by Δ vs the selected year (no extra data).
+  const anom = state.mapMode === 'anom' && currentData && pastData;
+  const refByName = pastData ? Object.fromEntries(pastData.map((c) => [c.name, c.tmax])) : null;
+
   const leftMap = currentData
-    ? renderMapSVG(currentData, state.currentYear)
-    : `<div class="map-placeholder"><div class="spinner"></div></div>`;
+    ? renderMapSVG(currentData, state.currentYear, anom ? { ref: refByName, refYear: yr } : {})
+    : placeholder;
+  const rightMap = pastData ? renderMapSVG(pastData, yr) : placeholder;
 
-  // Right map: Past Year (selectedYear)
-  const rightMap = pastData
-    ? renderMapSVG(pastData, yr)
-    : `<div class="map-placeholder"><div class="spinner"></div></div>`;
+  const toggle = `
+    <div class="chips map-mode" role="group" aria-label="Coloration des cartes" data-role="map-mode">
+      <button class="chip chip--sm" data-mapmode="abs" aria-pressed="${!anom}">Absolu</button>
+      <button class="chip chip--sm" data-mapmode="anom" aria-pressed="${anom}">Écart vs ${yr}</button>
+    </div>`;
+
+  const legend = anom
+    ? `<div class="map-legend"><span class="map-legend__item"><i class="scale-bar" style="background:linear-gradient(90deg, ${divergingColor(-10)}, ${divergingColor(0)}, ${divergingColor(10)})"></i> plus frais → plus chaud vs ${yr}</span></div>`
+    : `<div class="map-legend">${legendHTML()}</div>`;
 
   return `
     <article class="heatmap-card heatmap-card--wide">
       <h3 class="heatmap-card__title">Cartes de France · le ${dayLabel}</h3>
       <p class="heatmap-card__sub">Comparaison des zones thermiques et températures</p>
-      
+      ${toggle}
+
       <div class="france-maps france-maps--side" data-role="france-maps-container">
         <div class="france-map-col">
-          <h4 class="france-map-col__title">${state.currentYear} (Actuelle)</h4>
+          <h4 class="france-map-col__title">${state.currentYear} (Actuelle)${anom ? ` · écart vs ${yr}` : ''}</h4>
           <div class="france-map" data-role="france-map-current">
             ${leftMap}
           </div>
@@ -217,7 +247,7 @@ export function heatmapContainerHTML(state) {
         </div>
       </div>
 
-      <div class="map-legend">${legendHTML()}</div>
+      ${legend}
     </article>
   `;
 }

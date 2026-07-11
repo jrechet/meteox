@@ -5,6 +5,10 @@ import { fetchToday, fetchRecent, fetchHistory, fetchHeatmap, MAX_WINDOW } from 
 import { viewLoading, viewError, viewApp, derive, machineContentHTML } from './components/views.js';
 import { renderChart } from './components/chart.js';
 import { heatmapContainerHTML, preloadFrancePaths } from './components/heatmap.js';
+import { parseHash, writeHash } from './lib/urlstate.js';
+
+const syncUrl = () => writeHash(state);
+let pendingRestore = null;
 
 const PARIS = { name: 'Paris', admin: 'Île-de-France', lat: 48.8566, lon: 2.3522 };
 const root = document.getElementById('app');
@@ -23,6 +27,8 @@ const state = {
   selectedYear: now.getFullYear(),
   mode: 'day', // 'day' | 'period'
   windowLen: 10,
+  periodMetric: 'tmax', // 'tmax' | 'precip' | 'wind' — Période chart metric
+  mapMode: 'abs', // 'abs' | 'anom' — dual-map coloring
   selectedIso: isoToday(), // Active date for the heatmap
   historyLoaded: false, // Flag for progressive loading
   dateSelected: false, // Flag indicating user explicitly selected a date in the strip
@@ -31,6 +37,20 @@ const state = {
 // ---------- boot: geoloc first, Paris fallback ----------
 async function boot() {
   render(viewLoading('Localisation en cours…'));
+
+  // A shared link fully specifies location + view — restore it, skip geolocation.
+  const u = parseHash();
+  if (u && u.lat != null && u.lon != null) {
+    pendingRestore = u;
+    await load({
+      name: u.name || `${u.lat.toFixed(2)}, ${u.lon.toFixed(2)}`,
+      admin: u.admin || 'France',
+      lat: u.lat,
+      lon: u.lon,
+    });
+    return;
+  }
+
   let loc;
   try {
     const pos = await currentPosition();
@@ -70,7 +90,9 @@ async function load(location) {
     const dayMmdd = monthDay(isoToDate(state.selectedIso));
     loadHeatmap(state.currentYear, dayMmdd);
 
-    // 4. Load 85-year history in the background
+    syncUrl();
+
+    // 5. Load 85-year history in the background
     loadHistoryInBackground(location);
   } catch (err) {
     console.error('Failed to load weather data:', err);
@@ -93,13 +115,30 @@ async function loadHistoryInBackground(location) {
     state.series = series;
     state.historyLoaded = true;
 
+    // Apply a restored view from a shared link now that the range is known.
+    if (pendingRestore) {
+      const r = pendingRestore;
+      pendingRestore = null;
+      const first = series[0]?.year ?? state.currentYear;
+      const last = series[series.length - 1]?.year ?? state.currentYear;
+      if (r.win) state.windowLen = r.win;
+      if (r.year != null) state.selectedYear = Math.min(last, Math.max(first, r.year));
+      if (r.date) {
+        state.selectedIso = r.date;
+        state.dateSelected = true;
+      }
+      if (r.mode) state.mode = r.mode;
+      syncUrl();
+    }
+
     // Re-render full app dashboard with enabled history elements
     render(viewApp(state));
     bindApp();
     revealOnScroll();
 
-    // Fetch heatmap for selected past year
+    // Fetch heatmap(s) for the selected date/year (current year too if dual maps)
     const dayMmdd = monthDay(isoToDate(state.selectedIso));
+    if (state.dateSelected) loadHeatmap(state.currentYear, dayMmdd);
     loadHeatmap(state.selectedYear, dayMmdd);
   } catch (err) {
     console.warn('Failed to load background history:', err);
@@ -159,26 +198,43 @@ function bindApp() {
       chartEl.innerHTML = renderChart(state.series, yr); // decade chart highlight
     }
     refreshMapsDebounced(); // a single map fetch once the drag settles
+    syncUrl();
   });
 
-  // tab switch: Jour même / Période
-  root.querySelectorAll('.tab[data-tab]').forEach((tab) => {
-    tab.addEventListener('click', () => {
-      const mode = tab.dataset.tab;
-      if (mode === state.mode) return;
-      state.mode = mode;
-      root.querySelectorAll('.tab[data-tab]').forEach((t) =>
-        t.setAttribute('aria-selected', String(t.dataset.tab === mode)),
-      );
-      if (chips) chips.hidden = mode !== 'period';
+  // tab switch: Jour même / Période (ARIA tab pattern + keyboard)
+  const tabs = [...root.querySelectorAll('.tab[data-tab]')];
+  const panel = root.querySelector('[data-role="machine-content"]');
+  const switchMode = (mode, focusTab = false) => {
+    if (mode === state.mode) return;
+    const tab = tabs.find((t) => t.dataset.tab === mode);
+    if (!tab || tab.disabled) return;
+    state.mode = mode;
+    tabs.forEach((t) => {
+      const on = t.dataset.tab === mode;
+      t.setAttribute('aria-selected', String(on));
+      t.tabIndex = on ? 0 : -1;
+    });
+    if (panel) panel.setAttribute('aria-labelledby', `tab-${mode}`);
+    if (chips) chips.hidden = mode !== 'period';
+    if (mode === 'day') {
+      state.selectedIso = state.todayIso;
+      state.dateSelected = false;
+    }
+    renderContent();
+    refreshMaps();
+    syncUrl();
+    if (focusTab) tab.focus();
+  };
 
-      // Reset selectedIso and dateSelected when leaving period mode
-      if (mode === 'day') {
-        state.selectedIso = state.todayIso;
-        state.dateSelected = false;
-      }
-      renderContent();
-      refreshMaps();
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', () => switchMode(tab.dataset.tab));
+    tab.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+      e.preventDefault();
+      const enabled = tabs.filter((t) => !t.disabled);
+      const i = enabled.indexOf(tab);
+      const next = enabled[(i + (e.key === 'ArrowRight' ? 1 : enabled.length - 1)) % enabled.length];
+      switchMode(next.dataset.tab, true);
     });
   });
 
@@ -193,11 +249,33 @@ function bindApp() {
       );
       renderContent();
       refreshMaps();
+      syncUrl();
     });
   });
 
-  // Event delegation to capture clicks on horizontal day strip columns (.pcol)
+  // Event delegation (content is re-rendered, so listeners live on the container)
   contentEl?.addEventListener('click', (e) => {
+    // metric toggle (Température / Pluie / Vent) in the Période panel
+    const metricBtn = e.target.closest('.chip[data-metric]');
+    if (metricBtn) {
+      if (metricBtn.dataset.metric !== state.periodMetric) {
+        state.periodMetric = metricBtn.dataset.metric;
+        renderContent();
+        refreshMaps();
+      }
+      return;
+    }
+
+    // map coloring toggle (Absolu / Écart) on the dual maps
+    const mapModeBtn = e.target.closest('.chip[data-mapmode]');
+    if (mapModeBtn) {
+      if (mapModeBtn.dataset.mapmode !== state.mapMode) {
+        state.mapMode = mapModeBtn.dataset.mapmode;
+        refreshHeatmapUI();
+      }
+      return;
+    }
+
     const pcol = e.target.closest('.pcol');
     if (pcol) {
       const date = pcol.dataset.date;
@@ -205,6 +283,8 @@ function bindApp() {
         state.selectedIso = date;
         state.dateSelected = true;
         renderContent();
+        refreshMaps(); // load both maps for the newly selected date
+        syncUrl();
       }
     }
   });
