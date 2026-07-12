@@ -19,6 +19,10 @@ describe('parseHash', () => {
     expect(s.date).toBe('2026-07-03');
   });
 
+  test('accepts the politics mode (shareable Lois & Climat tab)', () => {
+    expect(parseHash('#lat=48&lon=2&mode=politics').mode).toBe('politics');
+  });
+
   test('rejects out-of-vocabulary values', () => {
     const s = parseHash('#lat=48&lon=2&mode=bogus&win=7&date=nope');
     expect(s.mode).toBeNull(); // only day|period

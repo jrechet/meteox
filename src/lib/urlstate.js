@@ -16,7 +16,7 @@ export function parseHash(hash = typeof location !== 'undefined' ? location.hash
     lon: Number.isFinite(lon) ? lon : null,
     name: p.get('name') || null,
     admin: p.get('admin') || null,
-    mode: p.get('mode') === 'period' ? 'period' : p.get('mode') === 'day' ? 'day' : null,
+    mode: ['day', 'period', 'politics'].includes(p.get('mode')) ? p.get('mode') : null,
     year: Number.isFinite(year) ? year : null,
     win: [5, 10, 30].includes(win) ? win : null,
     date: /^\d{4}-\d{2}-\d{2}$/.test(p.get('date') || '') ? p.get('date') : null,

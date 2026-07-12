@@ -98,6 +98,16 @@ async function run() {
     await page.setViewportSize({ width: 1280, height: 1600 });
     check(await overflow(), 'no horizontal overflow at 1280');
 
+    console.log('[politics] Lois & Climat tab');
+    await page.locator('.tab[data-tab="politics"]').click();
+    check(await page.locator('.pcard--upcoming').count() > 0, 'politics tab renders upcoming law cards');
+    check(await page.locator('.rail--bar').first().isHidden(), 'year slider is hidden in politics mode');
+    check(await overflow(), 'no horizontal overflow in politics mode');
+    await page.locator('button[data-action="interpellate"]').first().click();
+    check(await page.locator('.cmodal #zipcode-input').count() === 1, 'interpellation modal opens');
+    await page.locator('.cmodal [data-action="close-modal"]').click();
+    check(await page.locator('.cmodal').count() === 0, 'interpellation modal closes');
+
     check(errors.length === 0, `no console errors (saw ${errors.length})`);
     if (errors.length) errors.forEach((e) => console.error('    console:', e));
   } finally {

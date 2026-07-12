@@ -1,3 +1,37 @@
+/** Best-effort human label for a French postal code's area (offline, no API). */
+export function departementLabel(cp) {
+  if (!/^\d{5}$/.test(cp)) return null;
+  const d = cp.slice(0, 2);
+  if (d === '20') return 'Corse';
+  if (d === '97' || d === '98') return `Outre-mer (${cp.slice(0, 3)})`;
+  return `département ${d}`;
+}
+
+/** Pre-filled interpellation letter for a law, optionally localized by postal code. */
+export function interpellationLetter(law, cp = '') {
+  const dep = departementLabel(cp);
+  const here = dep ? ` (${dep})` : '';
+  const pesticides =
+    law.indicators.pesticides < 0
+      ? 'Recul environnemental et hausse des risques pour la santé'
+      : 'Amélioration ou préservation';
+  const eau =
+    law.indicators.partageEau < 0
+      ? "Accaparement accru et déséquilibre d'usage"
+      : 'Préservation de la ressource commune';
+  return `Madame, Monsieur le Député,
+
+En tant que citoyen(ne) de votre circonscription${here}, je tiens à vous exprimer ma préoccupation concernant le projet de loi suivant : "${law.title}".
+
+Cette réforme aura un impact significatif sur notre environnement :
+- Pesticides : ${pesticides}
+- Partage de l'eau : ${eau}
+
+Je vous demande solennellement de voter contre tout recul des normes environnementales et sanitaires, et de privilégier l'intérêt des citoyens face aux lobbies économiques.
+
+Veuillez agréer, Madame, Monsieur le Député, l'assurance de mes salutations citoyennes.`;
+}
+
 export const LAWS_DATA = [
   {
     id: 'eco-agri-1',

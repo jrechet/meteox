@@ -282,8 +282,7 @@ function bindApp() {
     // Interpellate modal trigger
     const interpellateBtn = e.target.closest('[data-action="interpellate"]');
     if (interpellateBtn) {
-      const lawId = interpellateBtn.dataset.lawId;
-      showInterpellationModal(lawId);
+      showInterpellationModal(interpellateBtn.dataset.lawId, interpellateBtn);
       return;
     }
 
@@ -464,86 +463,109 @@ function revealOnScroll() {
   items.forEach((el) => io.observe(el));
 }
 
-function showInterpellationModal(lawId) {
-  import('./lib/laws.js').then(({ LAWS_DATA }) => {
+function showInterpellationModal(lawId, triggerEl) {
+  import('./lib/laws.js').then(({ LAWS_DATA, departementLabel, interpellationLetter }) => {
     const law = LAWS_DATA.find((l) => l.id === lawId);
     if (!law) return;
 
-    // Create modal overlay container
+    let cp = '';
+    const letter = () => interpellationLetter(law, cp);
+    const subject = encodeURIComponent(`Interpellation citoyenne : ${law.title}`);
+    const mailto = () => `mailto:?subject=${subject}&body=${encodeURIComponent(letter())}`;
+
     const modal = document.createElement('div');
     modal.className = 'cmodal';
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
-    
-    const subject = encodeURIComponent(`Interpellation citoyenne : ${law.title}`);
-    const bodyText = `Madame, Monsieur le Député,
-
-En tant que citoyen(ne) de votre circonscription, je tiens à vous exprimer ma préoccupation concernant le projet de loi suivant : "${law.title}".
-
-Cette réforme aura un impact significatif sur notre environnement :
-- Pesticides : ${law.indicators.pesticides < 0 ? 'Recul environnemental et hausse des risques pour la santé' : 'Amélioration ou préservation'}
-- Partage de l'eau : ${law.indicators.partageEau < 0 ? 'Accaparement accru et déséquilibre d\'usage' : 'Préservation de la ressource commune'}
-
-Je vous demande solennellement de voter contre tout recul des normes environnementales et sanitaires, et de privilégier l'intérêt des citoyens face aux lobbies économiques.
-
-Veuillez agréer, Madame, Monsieur le Député, l'assurance de mes salutations citoyennes.`;
-
-    const mailtoUrl = `mailto:?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
-
+    modal.setAttribute('aria-labelledby', 'cmodal-title');
     modal.innerHTML = `
       <div class="cmodal-content">
         <button class="cmodal__close" data-action="close-modal" aria-label="Fermer">&times;</button>
-        <h3 class="cmodal__title">Interpeller votre représentant</h3>
-        <p class="cmodal__desc">Envoyez une interpellation directe à votre député concernant : <strong>${law.title}</strong>.</p>
-        
+        <h3 class="cmodal__title" id="cmodal-title">Interpeller votre représentant</h3>
+        <p class="cmodal__desc">Rédigez une interpellation à votre député concernant : <strong>${law.title}</strong>.</p>
+
         <div class="cmodal__input-group">
-          <label class="cmodal__label" for="zipcode-input">Votre Code Postal (pour cibler l'élu)</label>
-          <input class="cmodal__input" type="text" id="zipcode-input" placeholder="Ex: 49000" maxlength="5" />
+          <label class="cmodal__label" for="zipcode-input">Votre code postal (pour situer votre circonscription)</label>
+          <input class="cmodal__input" type="text" inputmode="numeric" id="zipcode-input"
+                 placeholder="Ex : 49000" maxlength="5" autocomplete="postal-code" />
+          <p class="cmodal__hint" data-role="cp-hint">Saisissez votre code postal pour personnaliser la lettre.</p>
         </div>
 
         <div class="cmodal__input-group">
           <label class="cmodal__label">Aperçu du message</label>
-          <div class="cmodal__letter" readonly>${bodyText}</div>
+          <div class="cmodal__letter" data-role="letter">${letter()}</div>
         </div>
 
         <div class="cmodal__actions">
+          <a href="https://www.assemblee-nationale.fr/dyn/vos-deputes" target="_blank" rel="noopener"
+             class="pcard__link" data-role="finder">Trouver votre député ↗</a>
           <button class="btn btn--outline btn--sm" data-action="copy-letter">Copier le message</button>
-          <a href="${mailtoUrl}" class="btn btn--citoyen btn--sm" data-action="send-email">
-            Envoyer par e-mail ✉️
-          </a>
+          <a href="${mailto()}" class="btn btn--citoyen btn--sm" data-action="send-email" data-role="send">Envoyer par e-mail ✉️</a>
         </div>
       </div>
     `;
-
     document.body.appendChild(modal);
 
+    const letterEl = modal.querySelector('[data-role="letter"]');
+    const hintEl = modal.querySelector('[data-role="cp-hint"]');
+    const sendEl = modal.querySelector('[data-role="send"]');
+    const cpInput = modal.querySelector('#zipcode-input');
+
+    cpInput.addEventListener('input', () => {
+      cp = cpInput.value.replace(/\D/g, '').slice(0, 5);
+      if (cpInput.value !== cp) cpInput.value = cp;
+      const dep = departementLabel(cp);
+      hintEl.textContent =
+        cp.length === 0
+          ? 'Saisissez votre code postal pour personnaliser la lettre.'
+          : cp.length < 5
+            ? 'Code postal incomplet…'
+            : dep
+              ? `Circonscription : ${dep}. Utilisez « Trouver votre député » pour l’adresse exacte.`
+              : 'Code postal non reconnu.';
+      letterEl.textContent = letter();
+      sendEl.setAttribute('href', mailto());
+    });
+
+    // --- focus management (trap + restore) ---
+    const focusables = () =>
+      [...modal.querySelectorAll('a[href], button, input, [tabindex]:not([tabindex="-1"])')].filter(
+        (el) => !el.disabled && el.offsetParent !== null,
+      );
     const close = () => {
       modal.remove();
-      document.removeEventListener('keydown', handleEsc);
+      document.removeEventListener('keydown', onKey);
+      triggerEl?.focus();
     };
-    const handleEsc = (e) => {
-      if (e.key === 'Escape') close();
+    const onKey = (e) => {
+      if (e.key === 'Escape') return close();
+      if (e.key !== 'Tab') return;
+      const f = focusables();
+      if (!f.length) return;
+      const first = f[0];
+      const last = f[f.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
-    document.addEventListener('keydown', handleEsc);
-
+    document.addEventListener('keydown', onKey);
     modal.querySelector('[data-action="close-modal"]').addEventListener('click', close);
-    modal.addEventListener('click', (e) => {
-      if (e.target === modal) close();
-    });
+    modal.addEventListener('click', (e) => e.target === modal && close());
 
     const copyBtn = modal.querySelector('[data-action="copy-letter"]');
     copyBtn.addEventListener('click', () => {
-      navigator.clipboard.writeText(bodyText).then(() => {
+      navigator.clipboard?.writeText(letter()).then(() => {
         copyBtn.textContent = 'Copié !';
-        setTimeout(() => {
-          copyBtn.textContent = 'Copier le message';
-        }, 2000);
+        setTimeout(() => (copyBtn.textContent = 'Copier le message'), 2000);
       });
     });
+    sendEl.addEventListener('click', () => setTimeout(close, 500));
 
-    modal.querySelector('[data-action="send-email"]').addEventListener('click', () => {
-      setTimeout(close, 500);
-    });
+    cpInput.focus();
   });
 }
 

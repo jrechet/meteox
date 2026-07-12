@@ -7,6 +7,11 @@
   margin: 0;
 }
 
+/* The `hidden` attribute must win over component display rules (e.g. .rail--bar). */
+[hidden] {
+  display: none !important;
+}
+
 html {
   -webkit-text-size-adjust: 100%;
 }

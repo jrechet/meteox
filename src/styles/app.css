@@ -1492,6 +1492,11 @@ footer.foot {
   color: var(--color-ink-faint);
   text-transform: uppercase;
 }
+.cmodal__hint {
+  font-size: var(--text-xs);
+  color: var(--color-ink-soft);
+  margin-top: 0.35rem;
+}
 
 .cmodal__input {
   padding: 0.6rem;
