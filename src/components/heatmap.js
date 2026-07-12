@@ -77,7 +77,7 @@ export function renderMapSVG(data, year, opts = {}) {
     if (city.tmax == null) return '';
     const color = colorFor(city);
     // Large blurred circles that overlap to form continuous heat zones
-    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="70" fill="${color}" opacity="0.32" filter="url(#blur-filter)" />`;
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="90" fill="${color}" opacity="0.45" filter="url(#blur-filter)" />`;
   }).join('');
 
   // Generate interactive city dots and labels
@@ -143,7 +143,7 @@ export function renderMapSVG(data, year, opts = {}) {
     <svg viewBox="0 0 492 543" class="france-map__svg" role="img" aria-label="Carte des températures de la France en ${year}">
       <defs>
         <filter id="blur-filter" x="-50%" y="-50%" width="200%" height="200%">
-          <feGaussianBlur stdDeviation="24" />
+          <feGaussianBlur stdDeviation="30" />
         </filter>
         <clipPath id="france-clip">
           ${mainlandPaths.map((d) => `<path d="${d}" />`).join('')}

@@ -68,7 +68,7 @@ beforeAll(async () => {
 
 describe('main.js (jsdom integration)', () => {
   test('boots to a rendered dashboard with today card and slider', () => {
-    expect(document.querySelector('.today')).toBeTruthy();
+    expect(document.querySelector('.vignette--today')).toBeTruthy();
     expect(document.querySelector('[data-role="slider"]')).toBeTruthy();
   });
 

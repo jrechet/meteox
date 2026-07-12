@@ -2,6 +2,7 @@
   /* ---- Surfaces (light luxury / editorial cream) ---- */
   --color-bg: oklch(97.5% 0.012 85);
   --color-bg-grain: oklch(96% 0.014 82);
+  --color-bg-alt: oklch(93.5% 0.015 85);
   --color-surface: oklch(99% 0.006 90);
   --color-surface-raised: oklch(100% 0 0);
   --color-line: oklch(87% 0.015 80);

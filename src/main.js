@@ -201,7 +201,7 @@ function bindApp() {
     syncUrl();
   });
 
-  // tab switch: Jour même / Période (ARIA tab pattern + keyboard)
+  // tab switch: Jour même / Période / Lois & Climat (ARIA tab pattern + keyboard)
   const tabs = [...root.querySelectorAll('.tab[data-tab]')];
   const panel = root.querySelector('[data-role="machine-content"]');
   const switchMode = (mode, focusTab = false) => {
@@ -216,6 +216,22 @@ function bindApp() {
     });
     if (panel) panel.setAttribute('aria-labelledby', `tab-${mode}`);
     if (chips) chips.hidden = mode !== 'period';
+
+    // Toggle visibility of elements outside machine-content
+    const sliderRail = root.querySelector('.rail--bar');
+    const chartSec = root.querySelector('section[aria-label="Tendance sur les décennies"]');
+    const noteText = root.querySelector('.section__note');
+
+    if (sliderRail) sliderRail.hidden = mode === 'politics';
+    if (chartSec) chartSec.hidden = mode === 'politics';
+    if (noteText) {
+      if (mode === 'politics') {
+        noteText.innerHTML = "Consultez les récentes réformes écologiques en France, l'impact des lobbies et les actions citoyennes possibles.";
+      } else {
+        noteText.innerHTML = `Comparez à aujourd’hui&nbsp;: soit le <b>jour même</b> ${state.dayLabel}, soit une <b>période</b> — les derniers jours contre les mêmes jours d’une année passée.`;
+      }
+    }
+
     if (mode === 'day') {
       state.selectedIso = state.todayIso;
       state.dateSelected = false;
@@ -255,6 +271,22 @@ function bindApp() {
 
   // Event delegation (content is re-rendered, so listeners live on the container)
   contentEl?.addEventListener('click', (e) => {
+    // Law category filters
+    const filterChip = e.target.closest('[data-lawfilter]');
+    if (filterChip) {
+      state.lawFilter = filterChip.dataset.lawfilter;
+      renderContent();
+      return;
+    }
+
+    // Interpellate modal trigger
+    const interpellateBtn = e.target.closest('[data-action="interpellate"]');
+    if (interpellateBtn) {
+      const lawId = interpellateBtn.dataset.lawId;
+      showInterpellationModal(lawId);
+      return;
+    }
+
     // metric toggle (Température / Pluie / Vent) in the Période panel
     const metricBtn = e.target.closest('.chip[data-metric]');
     if (metricBtn) {
@@ -430,6 +462,89 @@ function revealOnScroll() {
     { rootMargin: '0px 0px -8% 0px', threshold: 0.08 },
   );
   items.forEach((el) => io.observe(el));
+}
+
+function showInterpellationModal(lawId) {
+  import('./lib/laws.js').then(({ LAWS_DATA }) => {
+    const law = LAWS_DATA.find((l) => l.id === lawId);
+    if (!law) return;
+
+    // Create modal overlay container
+    const modal = document.createElement('div');
+    modal.className = 'cmodal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    
+    const subject = encodeURIComponent(`Interpellation citoyenne : ${law.title}`);
+    const bodyText = `Madame, Monsieur le Député,
+
+En tant que citoyen(ne) de votre circonscription, je tiens à vous exprimer ma préoccupation concernant le projet de loi suivant : "${law.title}".
+
+Cette réforme aura un impact significatif sur notre environnement :
+- Pesticides : ${law.indicators.pesticides < 0 ? 'Recul environnemental et hausse des risques pour la santé' : 'Amélioration ou préservation'}
+- Partage de l'eau : ${law.indicators.partageEau < 0 ? 'Accaparement accru et déséquilibre d\'usage' : 'Préservation de la ressource commune'}
+
+Je vous demande solennellement de voter contre tout recul des normes environnementales et sanitaires, et de privilégier l'intérêt des citoyens face aux lobbies économiques.
+
+Veuillez agréer, Madame, Monsieur le Député, l'assurance de mes salutations citoyennes.`;
+
+    const mailtoUrl = `mailto:?subject=${subject}&body=${encodeURIComponent(bodyText)}`;
+
+    modal.innerHTML = `
+      <div class="cmodal-content">
+        <button class="cmodal__close" data-action="close-modal" aria-label="Fermer">&times;</button>
+        <h3 class="cmodal__title">Interpeller votre représentant</h3>
+        <p class="cmodal__desc">Envoyez une interpellation directe à votre député concernant : <strong>${law.title}</strong>.</p>
+        
+        <div class="cmodal__input-group">
+          <label class="cmodal__label" for="zipcode-input">Votre Code Postal (pour cibler l'élu)</label>
+          <input class="cmodal__input" type="text" id="zipcode-input" placeholder="Ex: 49000" maxlength="5" />
+        </div>
+
+        <div class="cmodal__input-group">
+          <label class="cmodal__label">Aperçu du message</label>
+          <div class="cmodal__letter" readonly>${bodyText}</div>
+        </div>
+
+        <div class="cmodal__actions">
+          <button class="btn btn--outline btn--sm" data-action="copy-letter">Copier le message</button>
+          <a href="${mailtoUrl}" class="btn btn--citoyen btn--sm" data-action="send-email">
+            Envoyer par e-mail ✉️
+          </a>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const close = () => {
+      modal.remove();
+      document.removeEventListener('keydown', handleEsc);
+    };
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') close();
+    };
+    document.addEventListener('keydown', handleEsc);
+
+    modal.querySelector('[data-action="close-modal"]').addEventListener('click', close);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) close();
+    });
+
+    const copyBtn = modal.querySelector('[data-action="copy-letter"]');
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(bodyText).then(() => {
+        copyBtn.textContent = 'Copié !';
+        setTimeout(() => {
+          copyBtn.textContent = 'Copier le message';
+        }, 2000);
+      });
+    });
+
+    modal.querySelector('[data-action="send-email"]').addEventListener('click', () => {
+      setTimeout(close, 500);
+    });
+  });
 }
 
 boot();

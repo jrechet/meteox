@@ -7,6 +7,7 @@ import { heatColor, heatGradient } from '../lib/color.js';
 import { renderChart } from './chart.js';
 import { periodHTML } from './period.js';
 import { heatmapContainerHTML } from './heatmap.js';
+import { politicsHTML } from './politics.js';
 
 export function viewLoading(msg = 'Localisation en cours…') {
   return `<div class="state" role="status">
@@ -48,7 +49,7 @@ function metric(k, v) {
   return `<div class="metric"><div class="metric__k">${k}</div><div class="metric__v tabular">${v}</div></div>`;
 }
 
-// ---- hero (today + verdict) ----
+// ---- hero (today + 10 years ago + warming trend) ----
 function heroHTML(state, d) {
   const { today, dayLabel } = state;
   const w = describeWeather(today.code);
@@ -61,42 +62,80 @@ function heroHTML(state, d) {
       : `Depuis ${d.firstYear}, le ${dayLabel} s’est ${d.climateRise >= 0 ? 'réchauffé' : 'refroidi'} de ${fmtSigned(d.climateRise)}° selon la tendance de fond.`;
   const decadeTxt = d.perDecade != null ? `Soit ${fmtSigned(d.perDecade)}° par décennie.` : '';
 
-  const anomTag =
-    d.vsNormal == null
-      ? ''
-      : `<span class="today__anom" data-dir="${d.vsNormal > 0.3 ? 'warm' : d.vsNormal < -0.3 ? 'cold' : 'flat'}">
-           ${fmtSigned(d.vsNormal)}° vs la normale du jour</span>`;
+  // Get data for exactly 10 years ago (e.g. 2016)
+  const targetYear = state.currentYear - 10;
+  const tenYearsAgoData = state.series
+    ? state.series.find((s) => s.year === targetYear)
+    : null;
+
+  let deltaPastStr = '';
+  let wPast = null;
+  if (tenYearsAgoData && tenYearsAgoData.tmax != null && today.tmax != null) {
+    wPast = describeWeather(tenYearsAgoData.code);
+    const diff = today.tmax - tenYearsAgoData.tmax;
+    deltaPastStr = `${fmtSigned(diff, 1)}° vs aujourd'hui`;
+  }
 
   return `
-  <section class="hero" aria-label="Conditions du jour">
-    <article class="today reveal" style="--today-glow:${glow}">
-      <div class="today__glow" aria-hidden="true"></div>
-      <p class="today__label">Aujourd’hui · ${dayLabel}</p>
-      <p class="today__date">${w.glyph} ${w.label}</p>
-      <div class="today__temp tabular">${fmtTemp(today.tmax, false)}<sup>°C</sup></div>
-      <p class="today__cond">Mini ${fmtTemp(today.tmin)} ${anomTag}</p>
-      <div class="today__meta">
+  <section class="hero-vignettes" aria-label="Aperçu météo et réchauffement">
+    <!-- Vignette 1: Aujourd'hui -->
+    <article class="vignette vignette--today reveal" style="--today-glow:${glow}">
+      <div class="vignette__glow" aria-hidden="true"></div>
+      <p class="vignette__label">Aujourd’hui · ${dayLabel}</p>
+      <p class="vignette__date">${w.glyph} ${w.label}</p>
+      <div class="vignette__temp tabular">${fmtTemp(today.tmax, false)}<sup>°C</sup></div>
+      <div class="vignette__meta">
         ${metric('Min', fmtTemp(today.tmin))}
         ${metric('Max', fmtTemp(today.tmax))}
         ${metric('Pluie', fmtMm(today.precip))}
         ${metric('Vent', fmtWind(today.wind))}
       </div>
     </article>
-    <aside class="verdict reveal">
-      <p class="verdict__ey">Le réchauffement de ce jour</p>
-      <p class="verdict__big" data-dir="${dir}">${d.climateRise == null ? '—' : fmtSigned(d.climateRise) + '°'}</p>
-      <p class="verdict__sub">${climateTxt} ${decadeTxt}</p>
+
+    <!-- Vignette 2: Il y a 10 ans -->
+    <article class="vignette vignette--past reveal">
+      <p class="vignette__label">Il y a 10 ans · ${targetYear}</p>
+      ${tenYearsAgoData && wPast
+        ? `
+          <p class="vignette__date">${wPast.glyph} ${wPast.label}</p>
+          <div class="vignette__temp tabular">${fmtTemp(tenYearsAgoData.tmax, false)}<sup>°C</sup></div>
+          <p class="vignette__cond" data-dir="${today.tmax - tenYearsAgoData.tmax > 0.3 ? 'warm' : today.tmax - tenYearsAgoData.tmax < -0.3 ? 'cold' : 'flat'}">${deltaPastStr}</p>
+          <div class="vignette__meta">
+            ${metric('Min', fmtTemp(tenYearsAgoData.tmin))}
+            ${metric('Max', fmtTemp(tenYearsAgoData.tmax))}
+            ${metric('Pluie', fmtMm(tenYearsAgoData.precip))}
+            ${metric('Vent', fmtWind(tenYearsAgoData.wind))}
+          </div>
+        `
+        : `
+          <div class="vignette__loading">
+            <div class="spinner spinner--sm"></div>
+            <p class="muted">Chargement de l'historique...</p>
+          </div>
+        `
+      }
+    </article>
+
+    <!-- Vignette 3: Réchauffement de ce jour -->
+    <article class="vignette vignette--verdict reveal">
+      <p class="vignette__label">Réchauffement de ce jour</p>
+      <p class="vignette__big" data-dir="${dir}">${d.climateRise == null ? '—' : fmtSigned(d.climateRise) + '°'}</p>
+      <p class="vignette__sub">${climateTxt} ${decadeTxt}</p>
       ${
         d.baseline == null
           ? ''
-          : `<p class="verdict__norm">Normale ${d.firstYear}–${d.firstYear + 29} · médiane <b>${fmtTemp(d.baselineMed)}</b> · moyenne <b>${fmtTemp(d.baseline)}</b></p>`
+          : `<p class="vignette__norm">Normale ${d.firstYear}–${d.firstYear + 29} · moyenne <b>${fmtTemp(d.baseline)}</b></p>`
       }
-    </aside>
+    </article>
   </section>`;
 }
 
 // ---- machine section content (swaps between Jour même / Période) ----
 export function machineContentHTML(state, d) {
+  if (state.mode === 'politics') {
+    return politicsHTML(state);
+  }
+
   const heatmap = heatmapContainerHTML(state);
   const showDualMaps =
     (state.mode === 'period' && state.dateSelected) ||
@@ -188,13 +227,15 @@ export function viewApp(state) {
 
       <div class="tabs reveal" role="tablist" aria-label="Mode de comparaison">
         <button class="tab" role="tab" id="tab-day" aria-controls="machine-panel" data-tab="day"
-                aria-selected="${state.mode !== 'period'}" tabindex="${state.mode !== 'period' ? '0' : '-1'}">Jour même</button>
+                aria-selected="${state.mode === 'day'}" tabindex="${state.mode === 'day' ? '0' : '-1'}">Jour même</button>
         <button class="tab" role="tab" id="tab-period" aria-controls="machine-panel" data-tab="period"
                 aria-selected="${state.mode === 'period'}" tabindex="${state.mode === 'period' ? '0' : '-1'}"
                 ${state.historyLoaded ? '' : 'disabled style="opacity: 0.6; cursor: not-allowed;"'}>Période ${state.historyLoaded ? '' : '(Chargement...)'}</button>
+        <button class="tab" role="tab" id="tab-politics" aria-controls="machine-panel" data-tab="politics"
+                aria-selected="${state.mode === 'politics'}" tabindex="${state.mode === 'politics' ? '0' : '-1'}">Lois & Climat 📜</button>
       </div>
 
-      <div class="rail rail--bar reveal">
+      <div class="rail rail--bar reveal" ${state.mode === 'politics' ? 'hidden' : ''}>
         <div class="rail__val">
           <span class="rail__now tabular" data-role="rail-year">${sel}</span>
           <span class="rail__hint">glissez pour changer d’année</span>
@@ -220,7 +261,7 @@ export function viewApp(state) {
            role="tabpanel" aria-labelledby="tab-${state.mode}">${machineContentHTML(state, d)}</div>
     </section>
 
-    <section class="section" aria-label="Tendance sur les décennies">
+    <section class="section" aria-label="Tendance sur les décennies" ${state.mode === 'politics' ? 'hidden' : ''}>
       <div class="section__head">
         <h2 class="section__title reveal">La courbe du réchauffement, un jour à la fois</h2>
         <p class="section__note reveal">Température maximale du ${state.dayLabel}, chaque année. La ligne pointillée est la tendance de fond.</p>

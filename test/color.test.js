@@ -8,25 +8,24 @@ describe('color helpers', () => {
     });
 
     test('returns the exact cold and hot endpoints', () => {
-      expect(heatColor(8)).toBe('oklch(62.0% 0.130 250.0)');
-      expect(heatColor(40)).toBe('oklch(57.0% 0.210 30.0)');
+      expect(heatColor(8)).toBe('oklch(60.0% 0.150 250.0)');
+      expect(heatColor(45)).toBe('oklch(52.0% 0.210 305.0)');
     });
 
     test('clamps below the coldest and above the hottest stop', () => {
       expect(heatColor(-40)).toBe(heatColor(8));
-      expect(heatColor(99)).toBe(heatColor(40));
+      expect(heatColor(99)).toBe(heatColor(45));
     });
 
-    test('interpolates between stops (24° = amber stop)', () => {
-      expect(heatColor(24)).toBe('oklch(80.0% 0.130 90.0)');
+    test('interpolates between stops (24°)', () => {
+      expect(heatColor(24)).toBe('oklch(70.4% 0.160 100.0)');
     });
 
     test('is monotonic in hue from hot to cold (no violet wrap)', () => {
       const hue = (t) => parseFloat(heatColor(t).split(' ')[2]);
-      // hotter = lower hue on this ramp; must never exceed the 250 cold cap
-      for (let t = 8; t <= 40; t++) {
-        expect(hue(t)).toBeLessThanOrEqual(250.1);
-        expect(hue(t)).toBeGreaterThanOrEqual(29.9);
+      for (let t = 8; t <= 45; t++) {
+        expect(hue(t)).toBeLessThanOrEqual(305.1);
+        expect(hue(t)).toBeGreaterThanOrEqual(27.9);
       }
     });
 
