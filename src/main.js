@@ -598,12 +598,7 @@ function showInterpellationModal(lawId, triggerEl) {
 
     searchBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      const val = cpInput.value.trim();
-      if (/^\d{5}$/.test(val)) {
-        window.open(`https://www.nosdeputes.fr/${val}`, '_blank');
-      } else {
-        window.open('https://habitants.assemblee-nationale.fr/', '_blank');
-      }
+      window.open('https://www.assemblee-nationale.fr/dyn/vos-deputes/recherche-carte', '_blank');
     });
 
     // --- focus management (trap + restore) ---

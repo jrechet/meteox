@@ -105,6 +105,16 @@ async function run() {
     check(await overflow(), 'no horizontal overflow in politics mode');
     await page.locator('button[data-action="interpellate"]').first().click();
     check(await page.locator('.cmodal #zipcode-input').count() === 1, 'interpellation modal opens');
+    
+    // Check that search-deputy-btn opens the official Assemblée Nationale card search url
+    const [popup] = await Promise.all([
+      ctx.waitForEvent('page'),
+      page.locator('.cmodal #search-deputy-btn').click()
+    ]);
+    await popup.waitForLoadState('commit');
+    check(popup.url() === 'https://www.assemblee-nationale.fr/dyn/vos-deputes/recherche-carte', 'search button opens official AN map locator page');
+    await popup.close();
+
     await page.locator('.cmodal [data-action="close-modal"]').click();
     check(await page.locator('.cmodal').count() === 0, 'interpellation modal closes');
 
