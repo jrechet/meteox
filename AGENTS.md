@@ -130,3 +130,11 @@ Le travail d'infrastructure et d'interface utilisateur est **extrêmement avanc�
    * Contient un graphique SVG double courbe (`dualChart`) affichant la température maximale de chaque jour de la période pour l'année en cours (ligne continue noire) vs l'année sélectionnée (ligne en pointillés orange/accent) avec une zone ombragée d'écart (`.pband`).
    * Affiche un bandeau horizontal défilant (`pstrip`) de cartes jour par jour avec l'icône météo, la température de cette année, celle de l'année passée, et l'écart thermique précis par jour.
 5. **Styles CSS complets** : Ajout de styles très soignés dans `src/styles/app.css` pour tous les nouveaux éléments (onglets, chips, tableau défilant, graphique bi-courbe).
+
+---
+
+## 8. Golden Rules (Règles d'Or)
+
+* **ZÉRO MOCK / AUCUNE FAUSSE DONNÉE** : Il est strictement interdit d'inventer, d'approximer ou d'injecter de fausses données législatives ou de faux résultats de votes dans l'application. Toutes les données de lois, scrutins publics et indicateurs présentés aux utilisateurs doivent provenir de sources officielles vérifiables (.gouv.fr, Assemblée Nationale, etc.).
+* **RECHERCHE ET FIABILITÉ** : Si une nouvelle loi ou un vote doit être intégré, le développeur ou l'agent doit obligatoirement rechercher les informations et liens réels de Légifrance ou de l'Assemblée Nationale correspondants.
+

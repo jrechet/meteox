@@ -203,6 +203,10 @@ export function viewApp(state) {
         <span class="brand__mark">Météo<em>Évolution</em></span>
         <span class="brand__tag">France · depuis 1940</span>
       </div>
+      <nav class="top-nav" role="navigation" aria-label="Menu principal">
+        <button class="top-nav__btn ${state.mode !== 'politics' ? 'top-nav__btn--active' : ''}" data-nav="climat">Climat 🌍</button>
+        <button class="top-nav__btn ${state.mode === 'politics' ? 'top-nav__btn--active' : ''}" data-nav="politics">Loi 📜</button>
+      </nav>
       <div class="place">
         <button class="place__btn" data-action="toggle-search" aria-haspopup="true" aria-expanded="false">
           <span class="place__pin" aria-hidden="true"></span>
@@ -217,22 +221,20 @@ export function viewApp(state) {
       </div>
     </header>
 
-    ${heroHTML(state, d)}
+    ${state.mode === 'politics' ? '' : heroHTML(state, d)}
 
     <section class="section" aria-label="Machine à remonter le temps">
-      <div class="section__head">
+      <div class="section__head" ${state.mode === 'politics' ? 'hidden style="display:none;"' : ''}>
         <h2 class="section__title reveal">Remontez le temps, un curseur à la main</h2>
         <p class="section__note reveal">Comparez à aujourd’hui&nbsp;: soit le <b>jour même</b> ${state.dayLabel}, soit une <b>période</b> — les derniers jours contre les mêmes jours d’une année passée.</p>
       </div>
 
-      <div class="tabs reveal" role="tablist" aria-label="Mode de comparaison">
+      <div class="tabs reveal" role="tablist" aria-label="Mode de comparaison" ${state.mode === 'politics' ? 'hidden style="display:none;"' : ''}>
         <button class="tab" role="tab" id="tab-day" aria-controls="machine-panel" data-tab="day"
                 aria-selected="${state.mode === 'day'}" tabindex="${state.mode === 'day' ? '0' : '-1'}">Jour même</button>
         <button class="tab" role="tab" id="tab-period" aria-controls="machine-panel" data-tab="period"
                 aria-selected="${state.mode === 'period'}" tabindex="${state.mode === 'period' ? '0' : '-1'}"
                 ${state.historyLoaded ? '' : 'disabled style="opacity: 0.6; cursor: not-allowed;"'}>Période ${state.historyLoaded ? '' : '(Chargement...)'}</button>
-        <button class="tab" role="tab" id="tab-politics" aria-controls="machine-panel" data-tab="politics"
-                aria-selected="${state.mode === 'politics'}" tabindex="${state.mode === 'politics' ? '0' : '-1'}">Lois & Climat 📜</button>
       </div>
 
       <div class="rail rail--bar reveal" ${state.mode === 'politics' ? 'hidden' : ''}>

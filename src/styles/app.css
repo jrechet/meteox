@@ -1535,4 +1535,83 @@ footer.foot {
   background: var(--color-bg-grain);
 }
 
+/* ============ Top Navigation (Climat/Loi) ============ */
+.top-nav {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-surface-raised);
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  box-shadow: var(--shadow-sm);
+}
+
+.top-nav__btn {
+  border: none;
+  background: none;
+  font-family: var(--font-body);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-ink-soft);
+  padding: 0.35rem 1.1rem;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease), color var(--dur-fast) var(--ease);
+}
+
+.top-nav__btn:hover {
+  color: var(--color-ink);
+}
+
+.top-nav__btn--active {
+  background: var(--color-surface);
+  color: var(--color-ink) !important;
+  box-shadow: var(--shadow-sm);
+}
+
+/* ============ Vote Group Legend & Numbers ============ */
+.vote-legend {
+  display: flex;
+  gap: var(--space-3);
+  margin-block: var(--space-1) var(--space-2);
+  font-size: 0.7rem;
+  color: var(--color-ink-soft);
+}
+
+.vote-legend__item {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.vote-legend__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.vote-legend__dot--for {
+  background: oklch(62% 0.16 140);
+}
+
+.vote-legend__dot--against {
+  background: oklch(58% 0.22 28);
+}
+
+.vote-legend__dot--abstained {
+  background: var(--color-line-strong);
+}
+
+.vote-num--for {
+  color: oklch(55% 0.16 140);
+}
+
+.vote-num--against {
+  color: oklch(50% 0.22 28);
+}
+
+
 

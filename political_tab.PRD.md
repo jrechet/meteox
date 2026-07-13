@@ -1,6 +1,7 @@
 # PRD — Onglet « Lois & Climat » (Political Tab)
 
 > Source du plan : `political_tab_plan.md`
+> Plan d'évolution phase 2 : [navigation-lois-fiabilisation.md](file:///Users/jre/dev/meteox/docs/plans/navigation-lois-fiabilisation.md)
 > Ce document suit l'avancement réel de l'implémentation. Cochez au fur et à mesure.
 > Légende : `[x]` fait · `[ ]` à faire · **(partiel)** = commencé mais incomplet.
 

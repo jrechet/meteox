@@ -11,23 +11,31 @@ export function departementLabel(cp) {
 export function interpellationLetter(law, cp = '') {
   const dep = departementLabel(cp);
   const here = dep ? ` (${dep})` : '';
+  
   const pesticides =
-    law.indicators.pesticides < 0
-      ? 'Recul environnemental et hausse des risques pour la santé'
-      : 'Amélioration ou préservation';
+    law.indicators.pesticides != null
+      ? (law.indicators.pesticides < 0
+          ? 'Recul environnemental et hausse des risques pour la santé'
+          : law.indicators.pesticides > 0
+            ? 'Amélioration ou préservation'
+            : 'Aucun impact direct')
+      : '';
   const eau =
-    law.indicators.partageEau < 0
-      ? "Accaparement accru et déséquilibre d'usage"
-      : 'Préservation de la ressource commune';
+    law.indicators.partageEau != null
+      ? (law.indicators.partageEau < 0
+          ? "Accaparement accru et déséquilibre d'usage"
+          : law.indicators.partageEau > 0
+            ? 'Préservation de la ressource commune'
+            : 'Aucun impact direct')
+      : '';
+
   return `Madame, Monsieur le Député,
 
 En tant que citoyen(ne) de votre circonscription${here}, je tiens à vous exprimer ma préoccupation concernant le projet de loi suivant : "${law.title}".
 
 Cette réforme aura un impact significatif sur notre environnement :
-- Pesticides : ${pesticides}
-- Partage de l'eau : ${eau}
-
-Je vous demande solennellement de voter contre tout recul des normes environnementales et sanitaires, et de privilégier l'intérêt des citoyens face aux lobbies économiques.
+${pesticides ? `- Pesticides : ${pesticides}\n` : ''}${eau ? `- Partage de l'eau : ${eau}\n` : ''}
+Je vous demande solennellement de prendre position en faveur de l'intérêt général et de la protection du climat, de la santé publique et du partage équitable de l'eau.
 
 Veuillez agréer, Madame, Monsieur le Député, l'assurance de mes salutations citoyennes.`;
 }
@@ -35,95 +43,100 @@ Veuillez agréer, Madame, Monsieur le Député, l'assurance de mes salutations c
 export const LAWS_DATA = [
   {
     id: 'eco-agri-1',
-    title: 'Recul du Plan Écophyto (Indicateurs pesticides)',
+    title: 'Protection de la population contre les PFAS (polluants éternels)',
     category: 'pesticides',
     status: 'passed',
-    date: '2024-04-12',
-    summary: 'Mise en pause du plan de réduction des pesticides et remplacement de l\'indicateur historique NODU par l\'indicateur européen HRI-1, accusé de masquer l\'usage de molécules toxiques sous prétexte de pondération par dangerosité.',
-    sourceUrl: 'https://www.legifrance.gouv.fr/dossierlegislatif/JORFDOLE000049539075/',
+    date: '2024-04-04',
+    summary: 'Adoption en première lecture de la proposition de loi visant à restreindre la fabrication et la vente de produits contenant des PFAS, avec l\'exclusion controversée des ustensiles de cuisine lors des débats parlementaires.',
+    sourceUrl: 'https://www2.assemblee-nationale.fr/scrutins/detail/(legislature)/16/(num)/3643',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/PFAS_substances_per_polyfluoroalkylees',
     indicators: {
-      pesticides: -2,       // Augmentation du risque/usage autorisé
-      pognonPuissants: -2,  // Favorable à l'agro-industrie et lobbies chimiques
-      peupleSante: -1.5,    // Augmentation de l'exposition sanitaire
-      partageEau: 0
+      pesticides: 1,        // Limitation des polluants chimiques
+      pognonPuissants: 1,   // Régulation (partielle) des lobbies de la chimie
+      peupleSante: 1.5,     // Réduction de l'exposition aux perturbateurs endocriniens
+      partageEau: 1.5       // Réduction de la contamination éternelle des nappes phréatiques
     },
     votes: {
-      gauche: { for: 4, against: 145, abstained: 1 },
-      milieu: { for: 128, against: 8, abstained: 12 },
-      droite: { for: 58, against: 2, abstained: 4 },
-      extremeDroite: { for: 82, against: 6, abstained: 2 }
+      gauche: { for: 95, against: 0, abstained: 0 },
+      milieu: { for: 91, against: 0, abstained: 0 },
+      droite: { for: 0, against: 0, abstained: 15 },
+      extremeDroite: { for: 0, against: 0, abstained: 12 }
     }
   },
   {
     id: 'eco-eau-1',
-    title: 'Simplification des forages et Méga-bassines',
-    category: 'eau',
+    title: 'Loi d\'accélération de la production d\'énergies renouvelables (APER)',
+    category: 'canicule',
     status: 'passed',
-    date: '2024-06-18',
-    summary: 'Décret facilitant les autorisations de travaux et les prélèvements d\'eau pour le remplissage des retenues de substitution artificielles (méga-bassines), au profit des irrigants intensifs.',
-    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/retrait-loi_eau_preservation',
+    date: '2023-01-10',
+    summary: 'Adoption en première lecture du projet de loi visant à planifier et accélérer le déploiement de l\'éolien, du solaire et de l\'hydroélectricité pour réduire les émissions de gaz à effet de serre et lutter contre le réchauffement climatique.',
+    sourceUrl: 'https://www2.assemblee-nationale.fr/scrutins/detail/(legislature)/16/(num)/823',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/production_energies_renouvelables',
     indicators: {
       pesticides: 0,
-      pognonPuissants: -2,  // Monopolisation des subventions et infrastructures
-      peupleSante: -1,      // Baisse des nappes phréatiques de consommation commune
-      partageEau: -2        // Privatisation de la ressource commune
+      pognonPuissants: -1,  // Favorise les fonds privés de développement énergétique
+      peupleSante: 1.5,     // Limitation de la pollution de l'air et atténuation des canicules
+      partageEau: 0
     },
     votes: {
-      gauche: { for: 0, against: 152, abstained: 0 },
-      milieu: { for: 115, against: 12, abstained: 18 },
-      droite: { for: 62, against: 0, abstained: 3 },
-      extremeDroite: { for: 79, against: 5, abstained: 4 }
+      gauche: { for: 71, against: 62, abstained: 2 },
+      milieu: { for: 215, against: 1, abstained: 0 },
+      droite: { for: 0, against: 55, abstained: 2 },
+      extremeDroite: { for: 0, against: 88, abstained: 0 }
     }
   },
   {
     id: 'eco-canicule-1',
-    title: 'Obligation d\'aménagements thermiques des écoles',
-    category: 'canicule',
+    title: 'Loi relative à l\'industrie verte',
+    category: 'agriculture',
     status: 'passed',
-    date: '2025-02-10',
-    summary: 'Loi imposant un plan pluriannuel de végétalisation des cours d\'école et d\'isolation thermique des salles de classe dans toutes les communes pour faire face aux pics de chaleur accrus.',
-    sourceUrl: 'https://www.legifrance.gouv.fr',
+    date: '2023-10-10',
+    summary: 'Adoption définitive du texte facilitant l\'implantation de sites industriels décarbonés (solaire, batteries) et réorientant l\'épargne privée vers la transition écologique, tout en simplifiant certaines procédures environnementales.',
+    sourceUrl: 'https://www2.assemblee-nationale.fr/scrutins/detail/(legislature)/16/(num)/2721',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/industrie_verte',
     indicators: {
       pesticides: 0,
-      pognonPuissants: 1,   // Investissement public imposé aux communes
-      peupleSante: 2,       // Protection immédiate des enfants et du personnel
-      partageEau: 1         // Récupération de l'eau de pluie pour les cours végétalisées
+      pognonPuissants: -1.5, // Avantages fiscaux et simplifications administratives pour les fonds et grands groupes industriels
+      peupleSante: 1,       // Réduction de l'empreinte carbone industrielle nationale
+      partageEau: 0.5       // Soutien à l'économie circulaire et recyclage des ressources
     },
     votes: {
-      gauche: { for: 148, against: 0, abstained: 2 },
-      milieu: { for: 135, against: 2, abstained: 8 },
-      droite: { for: 45, against: 12, abstained: 8 },
-      extremeDroite: { for: 60, against: 25, abstained: 5 }
+      gauche: { for: 0, against: 62, abstained: 5 },
+      milieu: { for: 176, against: 0, abstained: 0 },
+      droite: { for: 55, against: 0, abstained: 2 },
+      extremeDroite: { for: 0, against: 0, abstained: 12 }
     }
   },
   {
     id: 'eco-agri-future',
-    title: 'Loi d\'Orientation Agricole (L.O.A) - Cas d\'intérêt supérieur',
+    title: 'Loi d\'orientation pour la souveraineté agricole et le renouvellement des générations (L.O.A)',
     category: 'agriculture',
     status: 'upcoming',
-    date: '2026-09-15',
-    summary: 'Consécration de l\'agriculture et de la souveraineté alimentaire comme "intérêt général majeur". Cette disposition permettra de contourner des réglementations de protection de la biodiversité (haies, zones humides) en cas de projets d\'aménagements contestés.',
-    sourceUrl: 'https://www.assemblee-nationale.fr',
+    date: '2026-05-15',
+    summary: 'Projet de loi qualifiant l\'agriculture d\'"intérêt général majeur" pour assouplir les règles environnementales (haies, zones humides) et accélérer les recours contre les projets de stockages d\'eau (mégabassines).',
+    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/souverainete_agricole_renouvellement_generations',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/souverainete_agricole_renouvellement_generations',
     indicators: {
-      pesticides: -1,
-      pognonPuissants: -2,  // Protection juridique des grands exploitants
-      peupleSante: -1,
-      partageEau: -1.5      // Facilitation de retenues d'eau dérogatoires
+      pesticides: -1,       // Allègement des contraintes sur l'usage des intrants
+      pognonPuissants: -2,  // Protection juridique et subventions fléchées vers le grand agro-business
+      peupleSante: -1,      // Risques sanitaires accrus liés aux pesticides et à l'appauvrissement des sols
+      partageEau: -1.5      // Facilitation de forages dérogatoires et d'irrigation intensive
     }
   },
   {
     id: 'eco-eau-future',
-    title: 'Réglementation européenne sur la restauration de la nature (transposition)',
+    title: 'Transposition du Règlement Européen sur la Restauration de la Nature',
     category: 'eau',
     status: 'upcoming',
-    date: '2026-11-20',
-    summary: 'Scrutin à venir sur la transposition française de la directive européenne visant à restaurer 20% des zones terrestres et marines dégradées d\'ici 2030, notamment par la réouverture de cours d\'eau et la protection des zones humides.',
-    sourceUrl: 'https://www.assemblee-nationale.fr',
+    date: '2026-10-15',
+    summary: 'Projet de loi transposant les objectifs européens visant à restaurer 20% des zones terrestres et marines dégradées d\'ici 2030, notamment les zones humides, forêts et sols agricoles.',
+    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/restauration_nature_europe',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/restauration_nature_europe',
     indicators: {
-      pesticides: 1,        // Zones tampons sans intrants chimiques
-      pognonPuissants: 1,   // Obligation de mise en conformité des industriels
-      peupleSante: 2,       // Réduction des polluants et résilience inondation
-      partageEau: 2         // Restauration du cycle de l'eau naturel
+      pesticides: 1,        // Création de zones tampons naturelles sans pesticides
+      pognonPuissants: 1,   // Obligations réglementaires renforcées pour les grands propriétaires
+      peupleSante: 2,       // Services écosystémiques renforcés (sols vivants, captage de carbone)
+      partageEau: 2         // Restauration des cycles naturels de l'eau, zones humides et tourbières
     }
   }
 ];

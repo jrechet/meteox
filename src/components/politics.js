@@ -63,7 +63,9 @@ function voteGroupHTML(partyName, votes) {
         <div class="vote-group__segment vote-group__segment--against" style="width: ${pctAgainst}%" title="Contre: ${pctAgainst}%"></div>
         <div class="vote-group__segment vote-group__segment--abstained" style="width: ${pctAbstained}%" title="Abstention: ${pctAbstained}%"></div>
       </div>
-      <span class="vote-group__numbers">${pctFor}% / ${pctAgainst}%</span>
+      <span class="vote-group__numbers">
+        <span class="vote-num vote-num--for">${pctFor}% P</span> / <span class="vote-num vote-num--against">${pctAgainst}% C</span>
+      </span>
     </div>
   `;
 }
@@ -99,7 +101,7 @@ export function politicsHTML(state) {
       </div>
 
       <div class="pcard__actions">
-        <a href="${law.sourceUrl}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
+        <a href="${law.textUrl}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
         <button class="btn btn--citoyen btn--sm" data-action="interpellate" data-law-id="${law.id}">
           ${citizenActionIcon}
           <span>Interpeller mon député</span>
@@ -128,6 +130,11 @@ export function politicsHTML(state) {
         
         <div class="pcard__section">
           <h5 class="pcard__section-title">Vote des Groupes (Pour / Contre)</h5>
+          <div class="vote-legend">
+            <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--for"></span> Pour (P)</span>
+            <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--against"></span> Contre (C)</span>
+            <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--abstained"></span> Abstention</span>
+          </div>
           ${voteGroupHTML('Gauche (NFP/LFI/PS/EELV)', law.votes.gauche)}
           ${voteGroupHTML('Milieu (EPR/MoDem/Horizon)', law.votes.milieu)}
           ${voteGroupHTML('Droite (DR/LR)', law.votes.droite)}
@@ -136,6 +143,7 @@ export function politicsHTML(state) {
       </div>
 
       <div class="pcard__actions">
+        <a href="${law.textUrl}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
         <a href="${law.sourceUrl}" target="_blank" rel="noopener" class="pcard__link">Scrutin officiel ↗</a>
       </div>
     </article>

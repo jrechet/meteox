@@ -201,19 +201,32 @@ function bindApp() {
     syncUrl();
   });
 
-  // tab switch: Jour même / Période / Lois & Climat (ARIA tab pattern + keyboard)
+  // tab switch: Jour même / Période / Lois (two-level navigation)
   const tabs = [...root.querySelectorAll('.tab[data-tab]')];
   const panel = root.querySelector('[data-role="machine-content"]');
   const switchMode = (mode, focusTab = false) => {
     if (mode === state.mode) return;
-    const tab = tabs.find((t) => t.dataset.tab === mode);
-    if (!tab || tab.disabled) return;
     state.mode = mode;
+    if (mode !== 'politics') {
+      state.lastClimatMode = mode;
+    }
+
+    // Update primary navigation buttons
+    const navButtons = [...root.querySelectorAll('[data-nav]')];
+    navButtons.forEach((btn) => {
+      const active =
+        (mode === 'politics' && btn.dataset.nav === 'politics') ||
+        (mode !== 'politics' && btn.dataset.nav === 'climat');
+      btn.classList.toggle('top-nav__btn--active', active);
+    });
+
+    // Update secondary tabs active state
     tabs.forEach((t) => {
       const on = t.dataset.tab === mode;
       t.setAttribute('aria-selected', String(on));
       t.tabIndex = on ? 0 : -1;
     });
+
     if (panel) panel.setAttribute('aria-labelledby', `tab-${mode}`);
     if (chips) chips.hidden = mode !== 'period';
 
@@ -221,9 +234,25 @@ function bindApp() {
     const sliderRail = root.querySelector('.rail--bar');
     const chartSec = root.querySelector('section[aria-label="Tendance sur les décennies"]');
     const noteText = root.querySelector('.section__note');
+    const heroSec = root.querySelector('.hero-vignettes');
+    const secHead = root.querySelector('.section__head');
+    const subTabs = root.querySelector('.tabs');
 
     if (sliderRail) sliderRail.hidden = mode === 'politics';
     if (chartSec) chartSec.hidden = mode === 'politics';
+    if (heroSec) {
+      heroSec.hidden = mode === 'politics';
+      heroSec.style.display = mode === 'politics' ? 'none' : '';
+    }
+    if (secHead) {
+      secHead.hidden = mode === 'politics';
+      secHead.style.display = mode === 'politics' ? 'none' : '';
+    }
+    if (subTabs) {
+      subTabs.hidden = mode === 'politics';
+      subTabs.style.display = mode === 'politics' ? 'none' : '';
+    }
+
     if (noteText) {
       if (mode === 'politics') {
         noteText.innerHTML = "Consultez les récentes réformes écologiques en France, l'impact des lobbies et les actions citoyennes possibles.";
@@ -239,9 +268,26 @@ function bindApp() {
     renderContent();
     refreshMaps();
     syncUrl();
-    if (focusTab) tab.focus();
+    
+    if (focusTab && mode !== 'politics') {
+      const activeTab = tabs.find((t) => t.dataset.tab === mode);
+      if (activeTab) activeTab.focus();
+    }
   };
 
+  // Bind primary menu buttons
+  root.querySelectorAll('[data-nav]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const targetNav = btn.dataset.nav;
+      if (targetNav === 'politics') {
+        switchMode('politics');
+      } else {
+        switchMode(state.lastClimatMode || 'day');
+      }
+    });
+  });
+
+  // Bind secondary tab buttons
   tabs.forEach((tab) => {
     tab.addEventListener('click', () => switchMode(tab.dataset.tab));
     tab.addEventListener('keydown', (e) => {
@@ -469,9 +515,13 @@ function showInterpellationModal(lawId, triggerEl) {
     if (!law) return;
 
     let cp = '';
+    let email = '';
     const letter = () => interpellationLetter(law, cp);
     const subject = encodeURIComponent(`Interpellation citoyenne : ${law.title}`);
-    const mailto = () => `mailto:?subject=${subject}&body=${encodeURIComponent(letter())}`;
+    const mailto = () => {
+      const recipient = email.trim();
+      return `mailto:${recipient}?subject=${subject}&body=${encodeURIComponent(letter())}`;
+    };
 
     const modal = document.createElement('div');
     modal.className = 'cmodal';
@@ -485,10 +535,20 @@ function showInterpellationModal(lawId, triggerEl) {
         <p class="cmodal__desc">Rédigez une interpellation à votre député concernant : <strong>${law.title}</strong>.</p>
 
         <div class="cmodal__input-group">
-          <label class="cmodal__label" for="zipcode-input">Votre code postal (pour situer votre circonscription)</label>
-          <input class="cmodal__input" type="text" inputmode="numeric" id="zipcode-input"
-                 placeholder="Ex : 49000" maxlength="5" autocomplete="postal-code" />
-          <p class="cmodal__hint" data-role="cp-hint">Saisissez votre code postal pour personnaliser la lettre.</p>
+          <label class="cmodal__label" for="zipcode-input">1. Saisissez votre code postal</label>
+          <div style="display: flex; gap: var(--space-2);">
+            <input class="cmodal__input" type="text" inputmode="numeric" id="zipcode-input"
+                   placeholder="Ex : 49000" maxlength="5" autocomplete="postal-code" style="flex: 1;" />
+            <button class="btn btn--outline btn--sm" id="search-deputy-btn" style="white-space: nowrap;">Rechercher mon député 🔍</button>
+          </div>
+          <p class="cmodal__hint" data-role="cp-hint">Entrez votre code postal puis cliquez sur Rechercher pour ouvrir l'annuaire.</p>
+        </div>
+
+        <div class="cmodal__input-group">
+          <label class="cmodal__label" for="deputy-email-input">2. Collez l'e-mail officiel de votre député(e)</label>
+          <input class="cmodal__input" type="email" id="deputy-email-input"
+                 placeholder="Ex : prenom.nom@assemblee-nationale.fr" />
+          <p class="cmodal__hint">Trouvez l'e-mail officiel de l'élu sur NosDéputés.fr ou l'Assemblée nationale.</p>
         </div>
 
         <div class="cmodal__input-group">
@@ -497,8 +557,6 @@ function showInterpellationModal(lawId, triggerEl) {
         </div>
 
         <div class="cmodal__actions">
-          <a href="https://www.assemblee-nationale.fr/dyn/vos-deputes" target="_blank" rel="noopener"
-             class="pcard__link" data-role="finder">Trouver votre député ↗</a>
           <button class="btn btn--outline btn--sm" data-action="copy-letter">Copier le message</button>
           <a href="${mailto()}" class="btn btn--citoyen btn--sm" data-action="send-email" data-role="send">Envoyer par e-mail ✉️</a>
         </div>
@@ -510,6 +568,12 @@ function showInterpellationModal(lawId, triggerEl) {
     const hintEl = modal.querySelector('[data-role="cp-hint"]');
     const sendEl = modal.querySelector('[data-role="send"]');
     const cpInput = modal.querySelector('#zipcode-input');
+    const emailInput = modal.querySelector('#deputy-email-input');
+    const searchBtn = modal.querySelector('#search-deputy-btn');
+
+    const updateMailto = () => {
+      sendEl.setAttribute('href', mailto());
+    };
 
     cpInput.addEventListener('input', () => {
       cp = cpInput.value.replace(/\D/g, '').slice(0, 5);
@@ -517,14 +581,29 @@ function showInterpellationModal(lawId, triggerEl) {
       const dep = departementLabel(cp);
       hintEl.textContent =
         cp.length === 0
-          ? 'Saisissez votre code postal pour personnaliser la lettre.'
+          ? 'Entrez votre code postal puis cliquez sur Rechercher pour ouvrir l\'annuaire.'
           : cp.length < 5
             ? 'Code postal incomplet…'
             : dep
-              ? `Circonscription : ${dep}. Utilisez « Trouver votre député » pour l’adresse exacte.`
+              ? `Département identifié : ${dep}. Cliquez sur Rechercher pour identifier l'élu de votre circonscription.`
               : 'Code postal non reconnu.';
       letterEl.textContent = letter();
-      sendEl.setAttribute('href', mailto());
+      updateMailto();
+    });
+
+    emailInput.addEventListener('input', () => {
+      email = emailInput.value.trim();
+      updateMailto();
+    });
+
+    searchBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const val = cpInput.value.trim();
+      if (/^\d{5}$/.test(val)) {
+        window.open(`https://www.nosdeputes.fr/${val}`, '_blank');
+      } else {
+        window.open('https://habitants.assemblee-nationale.fr/', '_blank');
+      }
     });
 
     // --- focus management (trap + restore) ---

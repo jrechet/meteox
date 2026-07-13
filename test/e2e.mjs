@@ -99,7 +99,7 @@ async function run() {
     check(await overflow(), 'no horizontal overflow at 1280');
 
     console.log('[politics] Lois & Climat tab');
-    await page.locator('.tab[data-tab="politics"]').click();
+    await page.locator('[data-nav="politics"]').click();
     check(await page.locator('.pcard--upcoming').count() > 0, 'politics tab renders upcoming law cards');
     check(await page.locator('.rail--bar').first().isHidden(), 'year slider is hidden in politics mode');
     check(await overflow(), 'no horizontal overflow in politics mode');
