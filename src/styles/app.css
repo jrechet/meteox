@@ -954,7 +954,7 @@ footer.foot {
 /* Map text and label legibility enhancements */
 .map__temp-lbl {
   font-family: var(--font-body);
-  font-size: 8.5px;
+  font-size: 11px;
   font-weight: 700;
   fill: var(--color-surface-raised);
   text-anchor: middle;

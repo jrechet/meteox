@@ -119,7 +119,7 @@ export function renderMapSVG(data, year, opts = {}) {
 
     return `
       <g class="map__dot-group">
-        <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="7.5" fill="${tempColor}" class="map__dot">
+        <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="10.5" fill="${tempColor}" class="map__dot">
           <title>${titleText}</title>
         </circle>
         <text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="map__temp-lbl">${dotNum}</text>
@@ -218,8 +218,8 @@ export function heatmapContainerHTML(state) {
 
   const toggle = `
     <div class="chips map-mode" role="group" aria-label="Coloration des cartes" data-role="map-mode">
-      <button class="chip chip--sm" data-mapmode="abs" aria-pressed="${!anom}">Absolu</button>
-      <button class="chip chip--sm" data-mapmode="anom" aria-pressed="${anom}">Écart vs ${yr}</button>
+      <button class="chip chip--sm" data-mapmode="abs" aria-pressed="${state.mapMode === 'abs'}">Absolu</button>
+      <button class="chip chip--sm" data-mapmode="anom" aria-pressed="${state.mapMode === 'anom'}">Écart vs ${yr}</button>
     </div>`;
 
   const legend = anom

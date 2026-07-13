@@ -176,12 +176,14 @@ export function focusHTML(state, d, year) {
     <div class="focus__ago">${agoTxt} · ${state.dayLabel}</div>
     <div class="focus__temp tabular">${w.glyph} ${fmtTemp(rec.tmax)}</div>
     ${
-      delta == null
-        ? '<div class="focus__delta" data-dir="flat">donnée manquante</div>'
-        : `<div class="focus__delta" data-dir="${dir}">
-             <span class="tabular">${fmtSigned(delta)}°</span>
-             <span>vs aujourd’hui</span>
-           </div>`
+      ago === 0
+        ? ''
+        : delta == null
+          ? '<div class="focus__delta" data-dir="flat">donnée manquante</div>'
+          : `<div class="focus__delta" data-dir="${dir}">
+               <span class="tabular">${fmtSigned(delta)}°</span>
+               <span>vs aujourd’hui</span>
+             </div>`
     }
     <div class="focus__grid">
       ${metric('Min', fmtTemp(rec.tmin))}
