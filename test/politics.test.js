@@ -107,6 +107,27 @@ describe('politicsHTML', () => {
     expect(passedCount).toBe(eauLaws);
   });
 
+  test('gauges and vote matrix expose screen-reader text equivalents', () => {
+    const html = politicsHTML({ lawFilter: 'all' });
+    // indicator gauges: name + scale description in sr-only text
+    expect(html).toMatch(/sr-only">Pesticides : [^<]*sur une échelle de −2/);
+    // vote matrix: exact counts, not just percentages (LOA gauche: 1 pour, 160 contre)
+    expect(html).toContain('Gauche (NFP/LFI/PS/EELV) : 1 pour, 160 contre, 0 abstention.');
+    // decorative visuals hidden from AT
+    expect(html).toMatch(/class="vote-group__bar" aria-hidden="true"/);
+    expect(html).toMatch(/class="indicator-meter__track" aria-hidden="true"/);
+  });
+
+  test('UI labels follow the documented editorial line', () => {
+    const html = politicsHTML({ lawFilter: 'all' });
+    expect(html).toContain('Intérêts privés vs intérêt général');
+    expect(html).toContain('Santé & population');
+    expect(html).toContain('Centre (EPR/MoDem/Horizons)');
+    for (const banned of ['Pognon', 'Monopolisation vs Citoyens', 'Peuple & Santé', 'Milieu (EPR']) {
+      expect(html).not.toContain(banned);
+    }
+  });
+
   test('citizen action icon is a self-contained svg', () => {
     expect(citizenActionIcon).toContain('<svg');
     expect(citizenActionIcon).toContain('citizen-icon');
