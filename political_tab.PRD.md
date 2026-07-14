@@ -3,6 +3,7 @@
 > Source du plan : `political_tab_plan.md`
 > Plan d'évolution phase 2 : [navigation-lois-fiabilisation.md](file:///Users/jre/dev/meteox/docs/plans/navigation-lois-fiabilisation.md)
 > **Plan fiabilité des sources + backend (2026-07-14) : [lois-sources-fiabilite.md](file:///Users/jre/dev/meteox/docs/plans/lois-sources-fiabilite.md)** — audit des liens, contrôles automatisés, backend Quarkus/SQLite sur jrec.fr, module indicateurs IA multi-backend.
+> **Backlog multi-agents : [docs/BACKLOG.md](file:///Users/jre/dev/meteox/docs/BACKLOG.md)** — les GitHub issues #2–#6 sont la référence de travail des agents (macro-tâches + DoD commune + critères d'acceptance).
 > Ce document suit l'avancement réel de l'implémentation. Cochez au fur et à mesure.
 > Légende : `[x]` fait · `[ ]` à faire · **(partiel)** = commencé mais incomplet.
 
