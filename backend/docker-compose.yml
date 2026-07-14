@@ -1,0 +1,47 @@
+# Stack docker swarm (jrec.fr, pattern espace-client) — déployée par deploy.sh <env>.
+version: "3.7"
+services:
+  api:
+    image: "${MX_IMAGE:-meteox-laws-local}:${MX_TAG:-latest}"
+    logging:
+      driver: json-file
+      options:
+        max-size: "20m"
+        max-file: "3"
+    environment:
+      MX_ENV: "${MX_ENV:-int}"
+      MX_DB_PATH: /data/meteox-laws.db
+      MX_GITHUB_TOKEN: "${MX_GITHUB_TOKEN:-}"
+      QUARKUS_HTTP_CORS_ORIGINS: "${MX_CORS_ORIGINS:-https://jrechet.github.io}"
+    volumes:
+      # Volume persistant : le fichier SQLite survit aux redéploiements.
+      - laws-data:/data
+    networks:
+      - traefik-public
+    deploy:
+      # SQLite fichier => 1 seul writer : jamais plus d'un réplica.
+      replicas: 1
+      update_config:
+        order: stop-first
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          memory: 512m
+        reservations:
+          memory: 128m
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.${MX_STACK}.rule=Host(`${MX_DOMAIN}`)"
+        - "traefik.http.routers.${MX_STACK}.entrypoints=websecure"
+        - "traefik.http.routers.${MX_STACK}.tls=true"
+        - "traefik.http.routers.${MX_STACK}.tls.certresolver=le"
+        - "traefik.http.services.${MX_STACK}.loadbalancer.server.port=8080"
+
+volumes:
+  laws-data:
+
+networks:
+  traefik-public:
+    external: true
