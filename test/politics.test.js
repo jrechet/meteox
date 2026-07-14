@@ -38,9 +38,23 @@ describe('LAWS_DATA integrity', () => {
     }
   });
 
-  test('has at least one upcoming and one passed law', () => {
-    expect(LAWS_DATA.some((l) => l.status === 'upcoming')).toBe(true);
+  test('has at least one passed law', () => {
     expect(LAWS_DATA.some((l) => l.status === 'passed')).toBe(true);
+  });
+
+  test('every law carries verifiable source expectations (Golden Rule)', () => {
+    for (const l of LAWS_DATA) {
+      expect(l.sourceUrl).toMatch(/^https:\/\/www\.assemblee-nationale\.fr\//);
+      expect(l.textUrl).toMatch(/^https:\/\/www\.assemblee-nationale\.fr\//);
+      expect(l.sourceExpect).toBeTruthy();
+      expect(l.textExpect).toBeTruthy();
+    }
+  });
+
+  test('passed laws point to an official scrutin page', () => {
+    for (const l of LAWS_DATA.filter((x) => x.status === 'passed')) {
+      expect(l.sourceUrl).toMatch(/\/dyn\/\d+\/scrutins\/\d+$/);
+    }
   });
 });
 
@@ -72,12 +86,17 @@ describe('interpellationLetter', () => {
 });
 
 describe('politicsHTML', () => {
-  test('renders upcoming + passed cards, filters, and the citizen action button', () => {
+  test('renders passed cards, filters, and upcoming section (cards or honest empty state)', () => {
     const html = politicsHTML({ lawFilter: 'all' });
-    expect(html).toContain('pcard--upcoming');
+    const hasUpcoming = LAWS_DATA.some((l) => l.status === 'upcoming');
+    if (hasUpcoming) {
+      expect(html).toContain('pcard--upcoming');
+      expect(html).toContain('data-action="interpellate"');
+    } else {
+      expect(html).toContain('Aucun scrutin vérifié à venir');
+    }
     expect(html).toContain('vote-group'); // vote-by-group matrix on passed laws
     expect(html).toContain('indicator-meter'); // impact gauges
-    expect(html).toContain('data-action="interpellate"');
     expect(html).toContain('data-lawfilter="pesticides"');
   });
 

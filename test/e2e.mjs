@@ -89,8 +89,16 @@ async function run() {
     check(await page.locator('.pstrip').count() > 0, 'switching to Période renders the day strip');
     await page.locator('.chip[data-win="30"]').click();
     check(await page.locator('.pcol').count() >= 30, '30-day chip renders 30 day columns');
+    // Move slider to 1976 so a past year is selected for dual maps comparison
+    await page.evaluate(() => {
+      const slider = document.querySelector('[data-role="slider"]');
+      slider.value = 1976;
+      slider.dispatchEvent(new Event('input'));
+      slider.dispatchEvent(new Event('change'));
+    });
+    await page.waitForTimeout(500);
     await page.locator('.pstrip .pcol').nth(2).click();
-    await page.waitForTimeout(400);
+    await page.waitForTimeout(500);
     check(await page.locator('.france-map-col').count() === 2, 'selecting a day shows dual France maps');
     check(await overflow(), 'no horizontal overflow at 375 (dual maps stacked)');
 
@@ -100,23 +108,33 @@ async function run() {
 
     console.log('[politics] Lois & Climat tab');
     await page.locator('[data-nav="politics"]').click();
-    check(await page.locator('.pcard--upcoming').count() > 0, 'politics tab renders upcoming law cards');
+    check(await page.locator('.pcard').count() > 0, 'politics tab renders passed law cards');
     check(await page.locator('.rail--bar').first().isHidden(), 'year slider is hidden in politics mode');
     check(await overflow(), 'no horizontal overflow in politics mode');
-    await page.locator('button[data-action="interpellate"]').first().click();
-    check(await page.locator('.cmodal #zipcode-input').count() === 1, 'interpellation modal opens');
-    
-    // Check that search-deputy-btn opens the official Assemblée Nationale card search url
-    const [popup] = await Promise.all([
-      ctx.waitForEvent('page'),
-      page.locator('.cmodal #search-deputy-btn').click()
-    ]);
-    await popup.waitForLoadState('commit');
-    check(popup.url() === 'https://www.assemblee-nationale.fr/dyn/vos-deputes/recherche-carte', 'search button opens official AN map locator page');
-    await popup.close();
 
-    await page.locator('.cmodal [data-action="close-modal"]').click();
-    check(await page.locator('.cmodal').count() === 0, 'interpellation modal closes');
+    // Golden Rule: upcoming cards only exist with a verified source; otherwise an honest empty state.
+    const upcomingCount = await page.locator('.pcard--upcoming').count();
+    if (upcomingCount === 0) {
+      check(
+        (await page.locator('.politics-upcoming-grid .empty-state').count()) === 1,
+        'upcoming section shows honest empty state when no verified scrutin',
+      );
+    } else {
+      await page.locator('button[data-action="interpellate"]').first().click();
+      check(await page.locator('.cmodal #zipcode-input').count() === 1, 'interpellation modal opens');
+
+      // Check that search-deputy-btn opens the official Assemblée Nationale card search url
+      const [popup] = await Promise.all([
+        ctx.waitForEvent('page'),
+        page.locator('.cmodal #search-deputy-btn').click()
+      ]);
+      await popup.waitForLoadState('commit');
+      check(popup.url() === 'https://www.assemblee-nationale.fr/dyn/vos-deputes/recherche-carte', 'search button opens official AN map locator page');
+      await popup.close();
+
+      await page.locator('.cmodal [data-action="close-modal"]').click();
+      check(await page.locator('.cmodal').count() === 0, 'interpellation modal closes');
+    }
 
     check(errors.length === 0, `no console errors (saw ${errors.length})`);
     if (errors.length) errors.forEach((e) => console.error('    console:', e));

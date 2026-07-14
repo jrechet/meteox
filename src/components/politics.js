@@ -138,7 +138,7 @@ export function politicsHTML(state) {
           ${voteGroupHTML('Gauche (NFP/LFI/PS/EELV)', law.votes.gauche)}
           ${voteGroupHTML('Milieu (EPR/MoDem/Horizon)', law.votes.milieu)}
           ${voteGroupHTML('Droite (DR/LR)', law.votes.droite)}
-          ${voteGroupHTML('Extrême Droite (RN)', law.votes.extremeDroite)}
+          ${voteGroupHTML('Extrême Droite (RN/UDR)', law.votes.extremeDroite)}
         </div>
       </div>
 
@@ -157,7 +157,7 @@ export function politicsHTML(state) {
           <p class="politics-section__desc">Les projets législatifs cruciaux en cours de discussion. Agissez avant le vote pour faire pression sur vos représentants locaux.</p>
         </div>
         <div class="politics-upcoming-grid">
-          ${upcomingCards}
+          ${upcomingCards.length > 0 ? upcomingCards : '<p class="empty-state">Aucun scrutin vérifié à venir pour le moment. Seuls les textes dont le dossier officiel est confirmé sont affichés ici.</p>'}
         </div>
       </section>
 

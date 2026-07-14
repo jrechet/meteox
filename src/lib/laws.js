@@ -40,6 +40,12 @@ Je vous demande solennellement de prendre position en faveur de l'intérêt gén
 Veuillez agréer, Madame, Monsieur le Député, l'assurance de mes salutations citoyennes.`;
 }
 
+/**
+ * Golden Rule (AGENTS.md) : chaque URL est vérifiée (statut HTTP + fragment de titre
+ * officiel attendu, champs sourceExpect/textExpect) par scripts/check-sources.mjs.
+ * Aucune carte ne doit exister sans source officielle valide et concordante.
+ * Audit complet des sources : docs/plans/lois-sources-fiabilite.md (2026-07-14).
+ */
 export const LAWS_DATA = [
   {
     id: 'eco-agri-1',
@@ -48,8 +54,10 @@ export const LAWS_DATA = [
     status: 'passed',
     date: '2024-04-04',
     summary: 'Adoption en première lecture de la proposition de loi visant à restreindre la fabrication et la vente de produits contenant des PFAS, avec l\'exclusion controversée des ustensiles de cuisine lors des débats parlementaires.',
-    sourceUrl: 'https://www2.assemblee-nationale.fr/scrutins/detail/(legislature)/16/(num)/3643',
-    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/PFAS_substances_per_polyfluoroalkylees',
+    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/16/scrutins/3643',
+    sourceExpect: 'polyfluoroalkylées',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/DLR5L16N49455',
+    textExpect: 'polyfluoroalkylées',
     indicators: {
       pesticides: 1,        // Limitation des polluants chimiques
       pognonPuissants: 1,   // Régulation (partielle) des lobbies de la chimie
@@ -70,8 +78,10 @@ export const LAWS_DATA = [
     status: 'passed',
     date: '2023-01-10',
     summary: 'Adoption en première lecture du projet de loi visant à planifier et accélérer le déploiement de l\'éolien, du solaire et de l\'hydroélectricité pour réduire les émissions de gaz à effet de serre et lutter contre le réchauffement climatique.',
-    sourceUrl: 'https://www2.assemblee-nationale.fr/scrutins/detail/(legislature)/16/(num)/823',
-    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/production_energies_renouvelables',
+    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/16/scrutins/823',
+    sourceExpect: 'énergies renouvelables',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/DLR5L16N46539',
+    textExpect: 'énergies renouvelables',
     indicators: {
       pesticides: 0,
       pognonPuissants: -1,  // Favorise les fonds privés de développement énergétique
@@ -92,8 +102,10 @@ export const LAWS_DATA = [
     status: 'passed',
     date: '2023-10-10',
     summary: 'Adoption définitive du texte facilitant l\'implantation de sites industriels décarbonés (solaire, batteries) et réorientant l\'épargne privée vers la transition écologique, tout en simplifiant certaines procédures environnementales.',
-    sourceUrl: 'https://www2.assemblee-nationale.fr/scrutins/detail/(legislature)/16/(num)/2721',
-    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/industrie_verte',
+    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/16/scrutins/2721',
+    sourceExpect: 'industrie verte',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/DLR5L16N47917',
+    textExpect: 'industrie verte',
     indicators: {
       pesticides: 0,
       pognonPuissants: -1.5, // Avantages fiscaux et simplifications administratives pour les fonds et grands groupes industriels
@@ -108,35 +120,30 @@ export const LAWS_DATA = [
     }
   },
   {
-    id: 'eco-agri-future',
-    title: 'Loi d\'orientation pour la souveraineté agricole et le renouvellement des générations (L.O.A)',
+    id: 'eco-agri-loa',
+    title: 'Loi d\'orientation pour la souveraineté alimentaire et le renouvellement des générations en agriculture (LOA)',
     category: 'agriculture',
-    status: 'upcoming',
-    date: '2026-05-15',
-    summary: 'Projet de loi qualifiant l\'agriculture d\'"intérêt général majeur" pour assouplir les règles environnementales (haies, zones humides) et accélérer les recours contre les projets de stockages d\'eau (mégabassines).',
-    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/souverainete_agricole_renouvellement_generations',
+    status: 'passed',
+    date: '2025-02-19',
+    summary: 'Adoption définitive (texte de la commission mixte paritaire, scrutin n°844 du 19 février 2025 — loi n°2025-268 promulguée le 24 mars 2025). Qualifie l\'agriculture d\'"intérêt général majeur", assouplit des règles environnementales (haies, atteintes à la biodiversité dépénalisées) et sécurise les projets de stockage d\'eau.',
+    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/17/scrutins/844',
+    sourceExpect: 'souveraineté alimentaire et agricole',
     textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/souverainete_agricole_renouvellement_generations',
+    textExpect: 'Souveraineté en matière agricole',
     indicators: {
       pesticides: -1,       // Allègement des contraintes sur l'usage des intrants
       pognonPuissants: -2,  // Protection juridique et subventions fléchées vers le grand agro-business
       peupleSante: -1,      // Risques sanitaires accrus liés aux pesticides et à l'appauvrissement des sols
       partageEau: -1.5      // Facilitation de forages dérogatoires et d'irrigation intensive
-    }
-  },
-  {
-    id: 'eco-eau-future',
-    title: 'Transposition du Règlement Européen sur la Restauration de la Nature',
-    category: 'eau',
-    status: 'upcoming',
-    date: '2026-10-15',
-    summary: 'Projet de loi transposant les objectifs européens visant à restaurer 20% des zones terrestres et marines dégradées d\'ici 2030, notamment les zones humides, forêts et sols agricoles.',
-    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/restauration_nature_europe',
-    textUrl: 'https://www.assemblee-nationale.fr/dyn/16/dossiers/restauration_nature_europe',
-    indicators: {
-      pesticides: 1,        // Création de zones tampons naturelles sans pesticides
-      pognonPuissants: 1,   // Obligations réglementaires renforcées pour les grands propriétaires
-      peupleSante: 2,       // Services écosystémiques renforcés (sols vivants, captage de carbone)
-      partageEau: 2         // Restauration des cycles naturels de l'eau, zones humides et tourbières
+    },
+    // Scrutin 17e lég. n°844 (369 pour / 160 contre / 2 abst.) — mapping des groupes :
+    // gauche = LFI + SOC + Écologiste et Social + GDR · milieu = EPR + Dem + HOR + LIOT
+    // droite = DR · extrême droite = RN + UDR · (9 « pour » de non-inscrits hors blocs)
+    votes: {
+      gauche: { for: 1, against: 160, abstained: 0 },
+      milieu: { for: 178, against: 0, abstained: 2 },
+      droite: { for: 44, against: 0, abstained: 0 },
+      extremeDroite: { for: 137, against: 0, abstained: 0 }
     }
   }
 ];

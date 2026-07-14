@@ -1,5 +1,12 @@
 # Plan de mise en œuvre : Navigation Climat/Loi, Données Réelles & Interpellation
 
+> ⚠️ **Partiellement périmé (audit 2026-07-14)** : les URLs de scrutins/dossiers listées en § 2.2
+> (format `www2…/scrutins/detail/...` et slugs) sont **mortes (404)**. Les URLs corrigées et
+> vérifiées, ainsi que la stratégie de contrôle automatisé, sont dans
+> [lois-sources-fiabilite.md](./lois-sources-fiabilite.md) — qui fait foi.
+> De plus, les deux cartes « à venir » de ce plan étaient invalides (LOA promulguée le 24/03/2025 ;
+> « Restauration de la Nature » = règlement UE d'application directe, sans dossier français).
+
 Ce document décrit le plan technique détaillé pour implémenter les évolutions de navigation, fiabiliser les données de votes de l'Assemblée nationale et intégrer la recherche de députés.
 
 ---
