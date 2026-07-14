@@ -14,7 +14,7 @@
 | Phase | État | Avancement |
 |-------|------|-----------|
 | **Étape 1 — V1 statique interactive** | 🟢 Terminée | ~95 % |
-| **Étape 2 — V1.5 automatisation données** | 🟡 Amorcée (check sources CI + cron) | ~15 % |
+| **Étape 2 — V1.5 automatisation données** | 🟡 En cours (check sources CI/cron + backend Quarkus mergé, PR #8) | ~40 % |
 | **Étape 3 — V2 FranceConnect / envoi direct** | 🔴 Non commencée | 0 % |
 | **Qualité (tests, a11y, revue, deploy)** | 🟢 Bon | ~70 % |
 
@@ -48,7 +48,7 @@
 
 ### 2.3 Composant `src/components/politics.js`
 - [x] Section « Prochains scrutins » (grille de cartes `upcoming` + état vide honnête quand aucun scrutin vérifié — cas actuel depuis l'audit 2026-07-14)
-- [ ] **Carrousel horizontal** des futurs votes _(actuellement grille verticale — à confirmer vs plan)_
+- [x] Format des futurs votes tranché le 2026-07-14 : **grille conservée** (carrousel écarté — meilleure a11y, pertinent seulement si >4 scrutins simultanés après l'automatisation #3)
 - [ ] **Réalimentation automatique des scrutins à venir** (open data AN 17e législature, via backend — cf. plan fiabilité § 3.1)
 - [x] Section « Bilan des lois votées » (grille de cartes `passed`)
 - [x] Jauges d'indicateurs (`indicatorMeterHTML`, −2→+2 en position, code couleur pos/neg/neutre)
@@ -87,7 +87,7 @@
 
 - [x] **Contrôle automatisé des sources** : `scripts/check-sources.mjs` (statut HTTP + fragment de contenu attendu), `npm run check:sources`, bloquant en CI (`deploy.yml`)
 - [x] **Cron quotidien** `check-sources.yml` + ouverture/commentaire d'issue GitHub auto en cas de source invalide
-- [ ] Squelette backend Quarkus (REST + SQLite + Flyway) + Dockerfile + scripts build/deploy int jrec.fr
+- [x] Squelette backend Quarkus (REST + SQLite + Flyway) + Dockerfile + scripts build/deploy — mergé (PR #8, CI `backend-ci` verte) ; **déploiement int jrec.fr restant** (punch list dans l'issue #2)
 - [ ] Job serveur `extract-scrutins` : votes par groupe depuis l'open data AN (mapping des groupes documenté)
 - [ ] Job serveur `sync-dossiers` : alimentation « Prochains scrutins » (17e législature)
 - [ ] **Module `laws-indicators` (IA multi-backend)** : Claude CLI / Claude API / Ollama derrière une interface commune, scores en `draft` + relecture humaine obligatoire avant publication, justification citée exposée par l'API
@@ -121,7 +121,7 @@
 - [x] Onglet dans le pattern ARIA tablist
 - [x] Modal : focus-trap + `aria-labelledby` + restitution du focus + autofocus
 - [ ] Cartes rétractables : `aria-expanded` si repli implémenté
-- [ ] Jauges/matrice : équivalent texte pour lecteurs d'écran
+- [x] Jauges/matrice : équivalent texte pour lecteurs d'écran (sr-only + aria-hidden sur les visuels, PR #7)
 
 ### URL / partage
 - [x] Mode `politics` restaurable via lien partageable (`#…&mode=politics`)
@@ -136,11 +136,11 @@
 
 ## 6. Questions ouvertes / risques (à trancher)
 
-- [ ] **Ton éditorial & neutralité** — libellés orientés (« pognon des puissants », « lobbies », « méga-bassines »). Choix assumé mais expose à un reproche de biais ; définir la ligne éditoriale et une méthodologie de notation transparente des indicateurs.
+- [x] **Ton éditorial & neutralité** — résolu le 2026-07-14 : ligne éditoriale validée ([docs/ligne-editoriale.md](file:///Users/jre/dev/meteox/docs/ligne-editoriale.md)) — engagée sur les finalités, factuelle sur les données ; libellés harmonisés (« Intérêts privés vs intérêt général », « Santé & population », « Centre »). La méthodologie de notation des indicateurs reste portée par l'issue #4.
 - [x] **Fiabilité/sourcing des votes** — résolu le 2026-07-14 pour le corpus actuel : votes extraits des pages officielles de scrutin, Golden Rules renforcées dans AGENTS.md, contrôle automatisé continu. Restera à industrialiser via l'open data (backend).
 - [ ] **Méthodo des indicateurs −2..+2** — plan défini (module IA multi-backend + relecture humaine + justification citée, cf. plan fiabilité § 3.2) ; reste à implémenter et publier.
 - [ ] **Périmètre légal V2** — FranceConnect impose habilitation, conventions et contraintes fortes ; valider la faisabilité avant tout dev.
-- [ ] **Carrousel vs grille** — confirmer le format voulu pour les futurs votes.
+- [x] **Carrousel vs grille** — tranché le 2026-07-14 : grille conservée (issue #6).
 
 ---
 
