@@ -1,7 +1,7 @@
 # Ligne éditoriale — onglet « Lois & Climat »
 
-> Statut : **proposition** (issue #6) — la validation finale du mainteneur se fait sur la PR.
-> Une fois validée, toute nouvelle formulation UI doit s'y conformer.
+> Statut : **validée par le mainteneur le 2026-07-14** (issue #6).
+> Toute nouvelle formulation UI doit s'y conformer.
 
 ## 1. Posture
 
