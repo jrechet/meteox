@@ -6,7 +6,8 @@ const MONTHS_FR = [
 ];
 
 export function isoToday() {
-  return new Date().toISOString().slice(0, 10);
+  const now = new Date();
+  return new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
 }
 
 /**

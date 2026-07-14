@@ -119,10 +119,10 @@ export function renderMapSVG(data, year, opts = {}) {
 
     return `
       <g class="map__dot-group">
-        <circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="10.5" fill="${tempColor}" class="map__dot">
+        <text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="map__temp-lbl" fill="${tempColor}">
           <title>${titleText}</title>
-        </circle>
-        <text x="${x.toFixed(1)}" y="${y.toFixed(1)}" class="map__temp-lbl">${dotNum}</text>
+          ${dotNum}
+        </text>
         ${label}
       </g>
     `;
@@ -177,8 +177,9 @@ export function renderMapSVG(data, year, opts = {}) {
 export function heatmapContainerHTML(state) {
   const yr = state.selectedYear;
   const showDualMaps =
-    (state.mode === 'period' && state.dateSelected) ||
-    (state.mode === 'day' && yr !== state.currentYear);
+    ((state.mode === 'period' && state.dateSelected) ||
+     (state.mode === 'day' && yr !== state.currentYear)) &&
+    yr !== state.currentYear;
   const dayIso = state.selectedIso || state.todayIso;
   const dayMmdd = monthDay(isoToDate(dayIso));
   const dayLabel = dayMonthLabel(dayIso);
