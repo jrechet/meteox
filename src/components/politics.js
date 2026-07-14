@@ -35,13 +35,15 @@ function indicatorMeterHTML(name, val) {
     desc = val < -1.2 ? 'Très néfaste / Risque' : 'Négatif';
   }
 
+  const signedVal = val > 0 ? `+${val}` : `${val}`;
   return `
     <div class="indicator-meter">
-      <div class="indicator-meter__label">
+      <span class="sr-only">${name} : ${desc}, ${signedVal} sur une échelle de −2 (très néfaste) à +2 (très bénéfique).</span>
+      <div class="indicator-meter__label" aria-hidden="true">
         <span>${name}</span>
         <span class="indicator-meter__desc ${colorClass}">${desc}</span>
       </div>
-      <div class="indicator-meter__track">
+      <div class="indicator-meter__track" aria-hidden="true">
         <div class="indicator-meter__bullet ${colorClass}" style="left: ${percentage}%"></div>
       </div>
     </div>
@@ -57,13 +59,14 @@ function voteGroupHTML(partyName, votes) {
 
   return `
     <div class="vote-group">
-      <span class="vote-group__name">${partyName}</span>
-      <div class="vote-group__bar">
+      <span class="sr-only">${partyName} : ${votes.for} pour, ${votes.against} contre, ${votes.abstained} abstention${votes.abstained > 1 ? 's' : ''}.</span>
+      <span class="vote-group__name" aria-hidden="true" title="${partyName}">${partyName}</span>
+      <div class="vote-group__bar" aria-hidden="true">
         <div class="vote-group__segment vote-group__segment--for" style="width: ${pctFor}%" title="Pour: ${pctFor}%"></div>
         <div class="vote-group__segment vote-group__segment--against" style="width: ${pctAgainst}%" title="Contre: ${pctAgainst}%"></div>
         <div class="vote-group__segment vote-group__segment--abstained" style="width: ${pctAbstained}%" title="Abstention: ${pctAbstained}%"></div>
       </div>
-      <span class="vote-group__numbers">
+      <span class="vote-group__numbers" aria-hidden="true">
         <span class="vote-num vote-num--for">${pctFor}% P</span> / <span class="vote-num vote-num--against">${pctAgainst}% C</span>
       </span>
     </div>
@@ -96,8 +99,8 @@ export function politicsHTML(state) {
       <div class="pcard__indicators-grid">
         ${indicatorMeterHTML('Impact pesticides', law.indicators.pesticides)}
         ${indicatorMeterHTML('Partage de l\'eau', law.indicators.partageEau)}
-        ${indicatorMeterHTML('Lobbies vs Citoyens', law.indicators.pognonPuissants)}
-        ${indicatorMeterHTML('Peuple & Santé', law.indicators.peupleSante)}
+        ${indicatorMeterHTML('Intérêts privés vs intérêt général', law.indicators.pognonPuissants)}
+        ${indicatorMeterHTML('Santé & population', law.indicators.peupleSante)}
       </div>
 
       <div class="pcard__actions">
@@ -124,8 +127,8 @@ export function politicsHTML(state) {
           <h5 class="pcard__section-title">Indicateurs d'Impact</h5>
           ${indicatorMeterHTML('Pesticides', law.indicators.pesticides)}
           ${indicatorMeterHTML('Partage de l\'eau', law.indicators.partageEau)}
-          ${indicatorMeterHTML('Monopolisation vs Citoyens', law.indicators.pognonPuissants)}
-          ${indicatorMeterHTML('Santé & Population', law.indicators.peupleSante)}
+          ${indicatorMeterHTML('Intérêts privés vs intérêt général', law.indicators.pognonPuissants)}
+          ${indicatorMeterHTML('Santé & population', law.indicators.peupleSante)}
         </div>
         
         <div class="pcard__section">
@@ -136,7 +139,7 @@ export function politicsHTML(state) {
             <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--abstained"></span> Abstention</span>
           </div>
           ${voteGroupHTML('Gauche (NFP/LFI/PS/EELV)', law.votes.gauche)}
-          ${voteGroupHTML('Milieu (EPR/MoDem/Horizon)', law.votes.milieu)}
+          ${voteGroupHTML('Centre (EPR/MoDem/Horizons)', law.votes.milieu)}
           ${voteGroupHTML('Droite (DR/LR)', law.votes.droite)}
           ${voteGroupHTML('Extrême Droite (RN/UDR)', law.votes.extremeDroite)}
         </div>

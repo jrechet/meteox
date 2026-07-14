@@ -1330,9 +1330,8 @@ footer.foot {
   flex: 0 0 160px;
   color: var(--color-ink-soft);
   font-weight: 500;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.25;
+  overflow-wrap: break-word;
 }
 
 .vote-group__bar {
@@ -1611,7 +1610,7 @@ footer.foot {
 }
 
 .vote-num--for {
-  color: oklch(55% 0.16 140);
+  color: oklch(47% 0.14 145); /* ≥ 6:1 sur surface blanche (WCAG AA, texte 12px) */
 }
 
 .vote-num--against {
