@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 [ -n "$1" ] || { echo "Usage: ./deploy.sh <int|prod>" >&2; exit 1; }
 . "./$1.env"
 
-export MX_IMAGE=jrec/meteox-laws
+export MX_IMAGE=ghcr.io/jrechet/meteox-laws
 export MX_TAG="${MX_ENV}-$(git rev-parse --short HEAD)"
 
 docker stack deploy -c docker-compose.yml "${MX_STACK}"
