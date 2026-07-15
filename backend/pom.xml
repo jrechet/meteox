@@ -18,7 +18,7 @@
     <quarkus.platform.version>3.37.2</quarkus.platform.version>
     <quarkus-jdbc-sqlite.version>3.0.11</quarkus-jdbc-sqlite.version>
     <wiremock.version>3.13.2</wiremock.version>
-    <surefire-plugin.version>3.5.4</surefire-plugin.version>
+    <surefire-plugin.version>3.5.6</surefire-plugin.version>
   </properties>
 
   <dependencyManagement>
