@@ -10,6 +10,7 @@ cd "$(dirname "$0")"
 TAG="${MX_ENV}-$(git rev-parse --short HEAD)"
 
 ./mvnw -B -DskipTests package
-docker build -t "jrec/meteox-laws:${TAG}" -t jrec/meteox-laws:latest .
+docker build -t "ghcr.io/jrechet/meteox-laws:${TAG}" .
 
-echo "Image construite : jrec/meteox-laws:${TAG}"
+echo "Image construite : ghcr.io/jrechet/meteox-laws:${TAG}"
+echo "Note : le chemin nominal de déploiement est la GitHub Action backend-cd.yml (push sur main)."
