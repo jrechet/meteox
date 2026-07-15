@@ -1,0 +1,26 @@
+{
+  "pesticides": {
+    "score": 0,
+    "justification": "Le texte porte sur les énergies renouvelables et ne dit rien de l'exposition aux pesticides ou polluants chimiques.",
+    "citation": "planifier et accélérer le déploiement de l'éolien, du solaire et de l'hydroélectricité",
+    "confidence": "faible"
+  },
+  "partageEau": {
+    "score": 0,
+    "justification": "L'hydroélectricité mobilise la ressource en eau mais le texte ne précise ni règle de partage ni mesure de préservation.",
+    "citation": "du solaire et de l'hydroélectricité",
+    "confidence": "faible"
+  },
+  "pognonPuissants": {
+    "score": 0,
+    "justification": "Le résumé ne permet pas de déterminer si l'accélération profite d'abord à des opérateurs privés concentrés ou à l'intérêt général énergétique.",
+    "citation": "accélérer le déploiement de l'éolien",
+    "confidence": "faible"
+  },
+  "peupleSante": {
+    "score": 1,
+    "justification": "La réduction des émissions de gaz à effet de serre atténue le réchauffement, dont les effets sanitaires (canicules, pollution) pèsent sur la population.",
+    "citation": "réduire les émissions de gaz à effet de serre et lutter contre le réchauffement climatique",
+    "confidence": "moyenne"
+  }
+}

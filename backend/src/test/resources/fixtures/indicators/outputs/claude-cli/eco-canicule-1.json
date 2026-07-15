@@ -1,0 +1,26 @@
+{
+  "pesticides": {
+    "score": 0,
+    "justification": "Le texte industriel ne traite pas des pesticides ni des polluants chimiques diffus.",
+    "citation": "l'implantation de sites industriels décarbonés",
+    "confidence": "faible"
+  },
+  "partageEau": {
+    "score": 0,
+    "justification": "Aucune disposition du résumé ne concerne la ressource en eau ou son partage.",
+    "citation": "la transition écologique",
+    "confidence": "faible"
+  },
+  "pognonPuissants": {
+    "score": -1,
+    "justification": "La simplification de procédures environnementales au bénéfice d'implantations industrielles fait primer des intérêts économiques privés sur les garde-fous d'intérêt général.",
+    "citation": "tout en simplifiant certaines procédures environnementales",
+    "confidence": "moyenne"
+  },
+  "peupleSante": {
+    "score": 1,
+    "justification": "La décarbonation de l'industrie réduit à terme les émissions et leurs effets sanitaires, même si l'allègement des procédures peut réduire certaines protections.",
+    "citation": "l'implantation de sites industriels décarbonés (solaire, batteries)",
+    "confidence": "moyenne"
+  }
+}
