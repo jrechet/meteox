@@ -1,0 +1,165 @@
+{
+  "generatedAt": "2026-07-16T23:09:25Z",
+  "laws": [
+    {
+      "id": "eco-agri-1",
+      "title": "Protection de la population contre les PFAS (polluants éternels)",
+      "category": "pesticides",
+      "status": "passed",
+      "date": "2024-04-04",
+      "summary": "Adoption en première lecture de la proposition de loi visant à restreindre la fabrication et la vente de produits contenant des PFAS, avec l'exclusion controversée des ustensiles de cuisine lors des débats parlementaires.",
+      "sourceUrl": "https://www.assemblee-nationale.fr/dyn/16/scrutins/3643",
+      "sourceExpect": "polyfluoroalkylées",
+      "textUrl": "https://www.assemblee-nationale.fr/dyn/16/dossiers/DLR5L16N49455",
+      "textExpect": "polyfluoroalkylées",
+      "indicators": {
+        "pesticides": 1,
+        "pognonPuissants": 1,
+        "peupleSante": 1.5,
+        "partageEau": 1.5
+      },
+      "votes": {
+        "gauche": {
+          "abstained": 0,
+          "against": 0,
+          "for": 98
+        },
+        "milieu": {
+          "abstained": 0,
+          "against": 0,
+          "for": 86
+        },
+        "droite": {
+          "abstained": 4,
+          "against": 0,
+          "for": 0
+        },
+        "extremeDroite": {
+          "abstained": 22,
+          "against": 0,
+          "for": 0
+        }
+      }
+    },
+    {
+      "id": "eco-eau-1",
+      "title": "Loi d'accélération de la production d'énergies renouvelables (APER)",
+      "category": "canicule",
+      "status": "passed",
+      "date": "2023-01-10",
+      "summary": "Adoption en première lecture du projet de loi visant à planifier et accélérer le déploiement de l'éolien, du solaire et de l'hydroélectricité pour réduire les émissions de gaz à effet de serre et lutter contre le réchauffement climatique.",
+      "sourceUrl": "https://www.assemblee-nationale.fr/dyn/16/scrutins/823",
+      "sourceExpect": "énergies renouvelables",
+      "textUrl": "https://www.assemblee-nationale.fr/dyn/16/dossiers/DLR5L16N46539",
+      "textExpect": "énergies renouvelables",
+      "indicators": {
+        "pesticides": 0,
+        "pognonPuissants": -1,
+        "peupleSante": 1.5,
+        "partageEau": 0
+      },
+      "votes": {
+        "gauche": {
+          "abstained": 24,
+          "against": 91,
+          "for": 28
+        },
+        "milieu": {
+          "abstained": 6,
+          "against": 2,
+          "for": 257
+        },
+        "droite": {
+          "abstained": 4,
+          "against": 56,
+          "for": 1
+        },
+        "extremeDroite": {
+          "abstained": 0,
+          "against": 87,
+          "for": 0
+        }
+      }
+    },
+    {
+      "id": "eco-canicule-1",
+      "title": "Loi relative à l'industrie verte",
+      "category": "agriculture",
+      "status": "passed",
+      "date": "2023-10-10",
+      "summary": "Adoption définitive du texte facilitant l'implantation de sites industriels décarbonés (solaire, batteries) et réorientant l'épargne privée vers la transition écologique, tout en simplifiant certaines procédures environnementales.",
+      "sourceUrl": "https://www.assemblee-nationale.fr/dyn/16/scrutins/2721",
+      "sourceExpect": "industrie verte",
+      "textUrl": "https://www.assemblee-nationale.fr/dyn/16/dossiers/DLR5L16N47917",
+      "textExpect": "industrie verte",
+      "indicators": {
+        "pesticides": 0,
+        "pognonPuissants": -1.5,
+        "peupleSante": 1,
+        "partageEau": 0.5
+      },
+      "votes": {
+        "gauche": {
+          "abstained": 16,
+          "against": 61,
+          "for": 0
+        },
+        "milieu": {
+          "abstained": 2,
+          "against": 0,
+          "for": 154
+        },
+        "droite": {
+          "abstained": 1,
+          "against": 1,
+          "for": 29
+        },
+        "extremeDroite": {
+          "abstained": 0,
+          "against": 0,
+          "for": 47
+        }
+      }
+    },
+    {
+      "id": "eco-agri-loa",
+      "title": "Loi d'orientation pour la souveraineté alimentaire et le renouvellement des générations en agriculture (LOA)",
+      "category": "agriculture",
+      "status": "passed",
+      "date": "2025-02-19",
+      "summary": "Adoption définitive (texte de la commission mixte paritaire, scrutin n°844 du 19 février 2025 — loi n°2025-268 promulguée le 24 mars 2025). Qualifie l'agriculture d'\"intérêt général majeur\", assouplit des règles environnementales (haies, atteintes à la biodiversité dépénalisées) et sécurise les projets de stockage d'eau.",
+      "sourceUrl": "https://www.assemblee-nationale.fr/dyn/17/scrutins/844",
+      "sourceExpect": "souveraineté alimentaire et agricole",
+      "textUrl": "https://www.assemblee-nationale.fr/dyn/16/dossiers/souverainete_agricole_renouvellement_generations",
+      "textExpect": "Souveraineté en matière agricole",
+      "indicators": {
+        "pesticides": -1,
+        "pognonPuissants": -2,
+        "peupleSante": -1,
+        "partageEau": -1.5
+      },
+      "votes": {
+        "gauche": {
+          "abstained": 0,
+          "against": 160,
+          "for": 1
+        },
+        "milieu": {
+          "abstained": 2,
+          "against": 0,
+          "for": 178
+        },
+        "droite": {
+          "abstained": 0,
+          "against": 0,
+          "for": 44
+        },
+        "extremeDroite": {
+          "abstained": 0,
+          "against": 0,
+          "for": 137
+        }
+      }
+    }
+  ]
+}

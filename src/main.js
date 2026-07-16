@@ -6,6 +6,7 @@ import { viewLoading, viewError, viewApp, derive, machineContentHTML } from './c
 import { renderChart } from './components/chart.js';
 import { heatmapContainerHTML, preloadFrancePaths } from './components/heatmap.js';
 import { parseHash, writeHash } from './lib/urlstate.js';
+import { loadLaws, getLoadedLaws } from './lib/laws-data.js';
 
 const syncUrl = () => writeHash(state);
 let pendingRestore = null;
@@ -170,6 +171,18 @@ function bindApp() {
     contentEl.innerHTML = machineContentHTML(state, d);
   };
 
+  // Onglet Lois : données via l'API (snapshot en secours) — squelette pendant le fetch,
+  // puis re-rendu une fois chargé. loadLaws est mémoïsé : un seul fetch par session.
+  const ensureLawsLoaded = () => {
+    if (state.laws) return;
+    loadLaws().then(({ laws, meta }) => {
+      state.laws = laws;
+      state.lawsMeta = meta;
+      if (state.mode === 'politics') renderContent();
+    });
+  };
+  if (state.mode === 'politics') ensureLawsLoaded(); // deep-link #politics
+
   // Load only the maps the current view needs. The currentYear map is constant;
   // the selectedYear map is what changes while dragging — so debounce map loads
   // and never fire one per intermediate slider tick.
@@ -265,6 +278,7 @@ function bindApp() {
       state.selectedIso = state.todayIso;
       state.dateSelected = false;
     }
+    if (mode === 'politics') ensureLawsLoaded();
     renderContent();
     refreshMaps();
     syncUrl();
@@ -510,8 +524,8 @@ function revealOnScroll() {
 }
 
 function showInterpellationModal(lawId, triggerEl) {
-  import('./lib/laws.js').then(({ LAWS_DATA, departementLabel, interpellationLetter }) => {
-    const law = LAWS_DATA.find((l) => l.id === lawId);
+  import('./lib/laws.js').then(({ departementLabel, interpellationLetter }) => {
+    const law = getLoadedLaws().find((l) => l.id === lawId);
     if (!law) return;
 
     let cp = '';

@@ -1,5 +1,3 @@
-import { LAWS_DATA } from '../lib/laws.js';
-
 export const citizenActionIcon = `
   <svg class="citizen-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
     <path d="M2 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6z" />
@@ -73,11 +71,46 @@ function voteGroupHTML(partyName, votes) {
   `;
 }
 
+/** Squelette dimensionné (pas de layout shift) affiché pendant le fetch API. */
+function loadingSkeletonHTML() {
+  const card = `
+    <article class="pcard pcard--skeleton" aria-hidden="true">
+      <div class="skel skel--badge"></div>
+      <div class="skel skel--title"></div>
+      <div class="skel skel--line"></div>
+      <div class="skel skel--line skel--short"></div>
+      <div class="skel skel--block"></div>
+    </article>
+  `;
+  return `
+    <div class="politics-tab" aria-busy="true">
+      <p class="sr-only" role="status">Chargement des données législatives…</p>
+      <section class="politics-section">
+        <div class="politics-passed-grid">${card}${card}</div>
+      </section>
+    </div>
+  `;
+}
+
+/** Indicateur discret de fraîcheur : provenance + date du jeu de données. */
+function freshnessHTML(meta) {
+  if (!meta) return '';
+  const day = new Date(meta.dataDate).toLocaleDateString('fr-FR');
+  const label =
+    meta.source === 'api'
+      ? `Données à jour du ${day}`
+      : `Données archivées du ${day} — source temporairement injoignable`;
+  return `<p class="politics-freshness" data-source="${meta.source}">${label}</p>`;
+}
+
 export function politicsHTML(state) {
+  const laws = state.laws;
+  if (!laws) return loadingSkeletonHTML();
+
   const activeFilter = state.lawFilter || 'all';
-  
-  const upcoming = LAWS_DATA.filter(l => l.status === 'upcoming');
-  const passed = LAWS_DATA.filter(l => {
+
+  const upcoming = laws.filter(l => l.status === 'upcoming');
+  const passed = laws.filter(l => {
     if (l.status !== 'passed') return false;
     if (activeFilter === 'all') return true;
     return l.category === activeFilter;
@@ -154,6 +187,7 @@ export function politicsHTML(state) {
 
   return `
     <div class="politics-tab">
+      ${freshnessHTML(state.lawsMeta)}
       <section class="politics-section">
         <div class="politics-section__header">
           <h3 class="politics-section__title">📜 Mobilisation & Prochains Scrutins</h3>

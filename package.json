@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "vite build && node test/e2e.mjs",
-    "check:sources": "node scripts/check-sources.mjs"
+    "check:sources": "node scripts/check-sources.mjs",
+    "generate:snapshot": "node scripts/generate-snapshot.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.0",
