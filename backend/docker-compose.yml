@@ -32,11 +32,15 @@ services:
         reservations:
           memory: 128m
       labels:
+        # Routage par chemin sur l'apex (pas de DNS dédié requis) :
+        # https://${MX_DOMAIN}${MX_PATH_PREFIX}/api/... → conteneur /api/...
         - "traefik.enable=true"
-        - "traefik.http.routers.${MX_STACK}.rule=Host(`${MX_DOMAIN}`)"
+        - "traefik.http.routers.${MX_STACK}.rule=Host(`${MX_DOMAIN}`) && PathPrefix(`${MX_PATH_PREFIX:-/meteox-laws-int}`)"
         - "traefik.http.routers.${MX_STACK}.entrypoints=websecure"
         - "traefik.http.routers.${MX_STACK}.tls=true"
         - "traefik.http.routers.${MX_STACK}.tls.certresolver=le"
+        - "traefik.http.middlewares.${MX_STACK}-strip.stripprefix.prefixes=${MX_PATH_PREFIX:-/meteox-laws-int}"
+        - "traefik.http.routers.${MX_STACK}.middlewares=${MX_STACK}-strip"
         - "traefik.http.services.${MX_STACK}.loadbalancer.server.port=8080"
 
 volumes:

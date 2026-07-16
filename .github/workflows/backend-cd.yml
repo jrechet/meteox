@@ -61,7 +61,8 @@ jobs:
           MX_TAG: ${{ needs.build-push.outputs.tag }}
           MX_ENV: int
           MX_STACK: mxlawsint
-          MX_DOMAIN: meteox-laws.int.jrec.fr
+          MX_DOMAIN: jrec.fr
+          MX_PATH_PREFIX: /meteox-laws-int
           MX_CORS_ORIGINS: https://jrechet.github.io
           MX_GITHUB_TOKEN: ${{ secrets.MX_GITHUB_TOKEN }}
         run: docker stack up --detach=true -c docker-compose.yml mxlawsint
@@ -132,3 +133,24 @@ jobs:
             dump_diagnostics
             exit 1
           fi
+      - name: Accès externe via Traefik (https://jrec.fr/meteox-laws-int) — acceptance issue #2
+        run: |
+          set -u
+          BASE="https://jrec.fr/meteox-laws-int"
+          # Retries généreux : la 1re émission du certificat Let's Encrypt pour
+          # l'apex jrec.fr peut prendre ~1 min après la création du routeur.
+          for i in $(seq 1 18); do
+            if curl -fsS -m 10 "$BASE/api/health"; then
+              echo; echo "accès externe OK (tentative $i)"
+              acao=$(curl -fsS -m 10 -o /dev/null -D - \
+                       -H "Origin: https://jrechet.github.io" "$BASE/api/laws" \
+                       | grep -i "access-control-allow-origin" || true)
+              echo "CORS externe: ${acao:-<absent>}"
+              echo "$acao" | grep -qi "jrechet.github.io" || { echo "::error::CORS externe KO"; exit 1; }
+              exit 0
+            fi
+            echo "[$i] pas encore joignable (cert LE en cours ?)…"
+            sleep 10
+          done
+          echo "::error::API injoignable via $BASE après retries"
+          exit 1
