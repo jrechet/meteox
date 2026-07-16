@@ -42,6 +42,74 @@ public class LawRepository {
         ps -> ps.setString(1, id));
   }
 
+  /** Votes par bloc actuellement en base pour une loi (ordre de restitution stable). */
+  public Map<String, BlocVotes> votesFor(String lawId) {
+    try (Connection c = dataSource.getConnection()) {
+      return loadVotes(c, lawId);
+    } catch (SQLException e) {
+      throw new IllegalStateException("Lecture des votes impossible pour " + lawId, e);
+    }
+  }
+
+  /** Remplace atomiquement les votes d'une loi par les agrégats open data (delete + insert). */
+  public void replaceVotes(String lawId, Map<String, BlocVotes> votes) {
+    try (Connection c = dataSource.getConnection()) {
+      boolean autoCommit = c.getAutoCommit();
+      c.setAutoCommit(false);
+      try {
+        try (PreparedStatement del = c.prepareStatement("DELETE FROM scrutins WHERE law_id = ?")) {
+          del.setString(1, lawId);
+          del.executeUpdate();
+        }
+        try (PreparedStatement ins =
+            c.prepareStatement(
+                "INSERT INTO scrutins (law_id, bloc, votes_for, votes_against, votes_abstained)"
+                    + " VALUES (?, ?, ?, ?, ?)")) {
+          for (Map.Entry<String, BlocVotes> e : votes.entrySet()) {
+            ins.setString(1, lawId);
+            ins.setString(2, e.getKey());
+            ins.setInt(3, e.getValue().votesFor());
+            ins.setInt(4, e.getValue().votesAgainst());
+            ins.setInt(5, e.getValue().votesAbstained());
+            ins.addBatch();
+          }
+          ins.executeBatch();
+        }
+        c.commit();
+      } catch (SQLException e) {
+        c.rollback();
+        throw e;
+      } finally {
+        c.setAutoCommit(autoCommit);
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException("Remplacement des votes impossible pour " + lawId, e);
+    }
+  }
+
+  /** Journalise une synchronisation open data (issue #3) dans scrutin_syncs. */
+  public void recordScrutinSync(
+      String lawId,
+      int legislature,
+      int numero,
+      String scrutinUrl,
+      boolean changed,
+      String oldVotesJson,
+      String newVotesJson) {
+    execute(
+        "INSERT INTO scrutin_syncs (law_id, legislature, numero, scrutin_url, changed,"
+            + " old_votes, new_votes) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        ps -> {
+          ps.setString(1, lawId);
+          ps.setInt(2, legislature);
+          ps.setInt(3, numero);
+          ps.setString(4, scrutinUrl);
+          ps.setInt(5, changed ? 1 : 0);
+          ps.setString(6, oldVotesJson);
+          ps.setString(7, newVotesJson);
+        });
+  }
+
   public void recordSourceCheck(
       String lawId, String field, String url, Integer httpStatus, boolean ok, String reason) {
     execute(
