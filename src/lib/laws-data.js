@@ -4,24 +4,13 @@
 // vérifiée, jamais une donnée invalide — le snapshot est lui-même issu de l'API
 // (lois `published` uniquement) et validé par check:sources au build.
 import snapshot from '../data/laws-snapshot.json';
+import { isValidLaw } from './laws-validate.js';
 
 export const LAWS_API_BASE = 'https://jrec.fr/meteox-laws-int';
 const FETCH_TIMEOUT_MS = 5000;
 
 let loaded = null; // { laws, meta } après le premier chargement
 let inflight = null;
-
-/** Forme minimale attendue d'une loi (validation à la frontière, cf. coding rules). */
-function isValidLaw(l) {
-  return (
-    l &&
-    typeof l.id === 'string' &&
-    typeof l.title === 'string' &&
-    ['passed', 'upcoming'].includes(l.status) &&
-    typeof l.sourceUrl === 'string' &&
-    l.indicators != null
-  );
-}
 
 function fromSnapshot() {
   return {
