@@ -1,5 +1,5 @@
 # meteox-laws — image JVM (Quarkus fast-jar). Build préalable : ./mvnw package (via build.sh).
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:26-jre
 
 WORKDIR /app
 COPY target/quarkus-app/lib/ /app/lib/
