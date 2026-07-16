@@ -1669,3 +1669,59 @@ footer.foot {
 @media (prefers-reduced-motion: reduce) {
   .skel { animation: none; }
 }
+
+/* ---------- Dépliant « Pourquoi ces scores ? » (issue #4) ---------- */
+
+.indicators-why {
+  margin-top: 0.9rem;
+  border-top: 1px solid var(--color-line);
+  padding-top: 0.55rem;
+}
+
+.indicators-why__summary {
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  list-style-position: inside;
+}
+
+.indicators-why__summary:hover,
+.indicators-why__summary:focus-visible {
+  color: var(--color-ink);
+}
+
+.indicators-why__body {
+  margin-top: 0.6rem;
+  font-size: 0.82rem;
+  color: var(--color-ink-soft);
+}
+
+.indicators-why__row {
+  margin-bottom: 0.7rem;
+}
+
+.indicators-why__head {
+  margin: 0 0 0.2rem;
+}
+
+.indicators-why__text {
+  margin: 0 0 0.25rem;
+}
+
+.indicators-why__citation {
+  margin: 0.25rem 0 0;
+  padding-left: 0.7rem;
+  border-left: 3px solid var(--color-line-strong);
+  font-style: italic;
+}
+
+.indicators-why__confidence {
+  font-variant: small-caps;
+  color: var(--color-ink-faint);
+}
+
+.indicators-why__loading,
+.indicators-why__fallback {
+  margin: 0 0 0.4rem;
+}

@@ -131,6 +131,31 @@ async function run() {
       'freshness indicator shows live API data',
     );
     check(await page.locator('.rail--bar').first().isHidden(), 'year slider is hidden in politics mode');
+    // Acceptance issue #4 : le dépliant « Pourquoi ces scores ? » donne accès à la
+    // justification et à la méthodologie depuis chaque carte.
+    await page.route(/jrec\.fr\/meteox-laws-int\/api\/laws\/[^/]+\/indicators/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify({
+          lawId: 'x',
+          methodology: 'https://github.com/jrechet/meteox/blob/main/docs/methodologie-indicateurs.md',
+          indicators: [{ indicator: 'pesticides', score: 1, justification: 'Justification de test citée.', citation: 'extrait exact du texte', confidence: 'haute', model: 'claude-api:test' }],
+        }),
+      }),
+    );
+    await page.locator('.indicators-why__summary').first().click();
+    await page.locator('.indicators-why__citation').first().waitFor({ timeout: 5000 });
+    check(
+      (await page.locator('.indicators-why__body').first().textContent()).includes('Justification de test citée'),
+      'indicators details reveals the cited justification',
+    );
+    check(
+      (await page.locator('.indicators-why__body a[href*="methodologie-indicateurs"]').count()) >= 1,
+      'indicators details links to the methodology',
+    );
+
     // Revue responsive (DoD) : pas d'overflow aux 4 breakpoints sur l'onglet Lois.
     for (const w of [375, 768, 1280, 1920]) {
       await page.setViewportSize({ width: w, height: 1600 });

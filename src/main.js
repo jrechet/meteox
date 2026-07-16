@@ -8,6 +8,8 @@ import { heatmapContainerHTML, preloadFrancePaths } from './components/heatmap.j
 import { parseHash, writeHash } from './lib/urlstate.js';
 import { loadLaws, getLoadedLaws } from './lib/laws-data.js';
 import { escapeHtml } from './lib/html.js';
+import { loadIndicators } from './lib/indicators-data.js';
+import { indicatorsWhyBodyHTML } from './components/politics.js';
 
 const syncUrl = () => writeHash(state);
 let pendingRestore = null;
@@ -346,6 +348,20 @@ function bindApp() {
     const interpellateBtn = e.target.closest('[data-action="interpellate"]');
     if (interpellateBtn) {
       showInterpellationModal(interpellateBtn.dataset.lawId, interpellateBtn);
+      return;
+    }
+
+    // Dépliant « Pourquoi ces scores ? » (issue #4) : charge la justification au premier
+    // dépliage. Le <details> s'ouvre nativement ; on ne fait que remplir son corps.
+    const whySummary = e.target.closest('.indicators-why__summary');
+    if (whySummary) {
+      const details = whySummary.closest('.indicators-why');
+      if (details.dataset.loaded) return;
+      details.dataset.loaded = '1';
+      const body = details.querySelector('[data-role="why-body"]');
+      loadIndicators(details.dataset.lawId).then((payload) => {
+        body.innerHTML = indicatorsWhyBodyHTML(payload);
+      });
       return;
     }
 
