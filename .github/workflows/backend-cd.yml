@@ -70,28 +70,65 @@ jobs:
     needs: deploy-int
     runs-on: [self-hosted, meteox]
     steps:
-      - name: Wait for the service to converge (1/1)
+      - name: Health + CORS sur l'app (avec diagnostics si le conteneur crashe)
         run: |
-          for i in $(seq 1 30); do
-            state=$(docker service ls --filter name=mxlawsint_api --format '{{.Replicas}}')
-            echo "mxlawsint_api replicas: $state"
+          set -u
+          SERVICE=mxlawsint_api
+
+          # En cas d'échec, on veut enfin voir POURQUOI le conteneur s'arrête :
+          # `service ps` expose le code de sortie de la tâche (ex. OOM 137),
+          # `service logs` la stacktrace de démarrage.
+          dump_diagnostics() {
+            echo "::group::docker service ps --no-trunc $SERVICE"
+            docker service ps --no-trunc "$SERVICE" || true
+            echo "::endgroup::"
+            echo "::group::docker service logs --tail 300 $SERVICE"
+            docker service logs --tail 300 --timestamps "$SERVICE" 2>&1 || true
+            echo "::endgroup::"
+          }
+
+          # 1) Attendre la convergence 1/1.
+          for i in $(seq 1 40); do
+            state=$(docker service ls --filter "name=$SERVICE" --format '{{.Replicas}}')
+            echo "[$i] $SERVICE replicas: $state"
             [ "$state" = "1/1" ] && break
             sleep 5
           done
-          [ "$(docker service ls --filter name=mxlawsint_api --format '{{.Replicas}}')" = "1/1" ]
-      - name: Health + CORS directement sur l'app (partage du netns du conteneur)
-        run: |
-          # On partage le namespace réseau du conteneur applicatif (localhost:8080),
-          # sans dépendre du DNS public, de la terminaison TLS de Traefik, ni d'un réseau attachable.
-          cid=""
-          for i in $(seq 1 30); do
-            cid=$(docker ps -q --filter "label=com.docker.swarm.service.name=mxlawsint_api" | head -1)
-            [ -n "$cid" ] && break
+          if [ "$(docker service ls --filter "name=$SERVICE" --format '{{.Replicas}}')" != "1/1" ]; then
+            echo "::error::le service $SERVICE n'a pas convergé en 1/1"
+            dump_diagnostics
+            exit 1
+          fi
+
+          # 2) Sonder health + CORS en partageant le netns d'un conteneur RUNNING
+          #    (pas de dépendance DNS/TLS/Traefik). Retries : le conteneur peut
+          #    mettre quelques secondes à écouter, ou flapper s'il crashe.
+          probe() { docker run --rm --network "container:$1" curlimages/curl:latest "${@:2}"; }
+          ok=""
+          for i in $(seq 1 24); do
+            cid=$(docker ps -q \
+                    --filter "label=com.docker.swarm.service.name=$SERVICE" \
+                    --filter "status=running" | head -1)
+            if [ -n "$cid" ] && probe "$cid" -fsS -m 5 http://localhost:8080/api/health >/dev/null 2>&1; then
+              echo "health OK (tentative $i)"
+              acao=$(probe "$cid" -fsS -m 5 -o /dev/null -D - \
+                       -H "Origin: https://jrechet.github.io" \
+                       http://localhost:8080/api/laws 2>/dev/null \
+                       | grep -i "access-control-allow-origin" || true)
+              echo "CORS access-control-allow-origin: ${acao:-<absent>}"
+              if ! echo "$acao" | grep -qi "jrechet.github.io"; then
+                echo "::error::en-tête CORS attendu (jrechet.github.io) absent sur /api/laws"
+                dump_diagnostics
+                exit 1
+              fi
+              ok=1
+              break
+            fi
+            echo "[$i] pas encore prêt (cid='${cid:-}')…"
             sleep 5
           done
-          [ -n "$cid" ] || { echo "conteneur mxlawsint_api introuvable"; exit 1; }
-          probe() { docker run --rm --network "container:$cid" curlimages/curl:latest "$@"; }
-          probe -fsS http://localhost:8080/api/health
-          echo
-          probe -fsS -o /dev/null -D - -H "Origin: https://jrechet.github.io" \
-            http://localhost:8080/api/laws | grep -i "access-control-allow-origin"
+          if [ -z "$ok" ]; then
+            echo "::error::health/CORS KO après retries — le conteneur ne reste pas up"
+            dump_diagnostics
+            exit 1
+          fi
