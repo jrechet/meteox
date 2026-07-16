@@ -9,6 +9,8 @@ import fr.jrec.meteox.laws.repository.LawRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.io.ByteArrayInputStream;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import org.jboss.logging.Logger;
@@ -24,6 +26,9 @@ import org.jboss.logging.Logger;
 public class ScrutinSyncService {
 
   private static final Logger LOG = Logger.getLogger(ScrutinSyncService.class);
+
+  /** Les 4 blocs politiques attendus pour tout scrutin (cf. migration schéma). */
+  private static final List<String> BLOCS = List.of("gauche", "milieu", "droite", "extremeDroite");
 
   @Inject LawRepository repository;
   @Inject OpenDataScrutins openData;
@@ -74,7 +79,9 @@ public class ScrutinSyncService {
                     new IllegalStateException(
                         "Scrutin " + ref.fileName() + " absent du jeu open data"));
     ScrutinExtraction extracted = extraction.extract(new ByteArrayInputStream(json));
-    Map<String, BlocVotes> current = repository.votesFor(law.id());
+    // Un bloc absent en base (ex. loi partiellement seedée) ne doit pas déclencher une fausse
+    // divergence en boucle : on complète avec des zéros avant de comparer.
+    Map<String, BlocVotes> current = withAllBlocs(repository.votesFor(law.id()));
     String newJson = mapper.writeValueAsString(extracted.votesByBloc());
 
     if (extracted.votesByBloc().equals(current)) {
@@ -101,5 +108,14 @@ public class ScrutinSyncService {
             + newJson
             + "\n```");
     return true;
+  }
+
+  /** Complète les blocs manquants avec un décompte à zéro, sans muter la map fournie. */
+  private static Map<String, BlocVotes> withAllBlocs(Map<String, BlocVotes> votes) {
+    Map<String, BlocVotes> complete = new LinkedHashMap<>();
+    for (String bloc : BLOCS) {
+      complete.put(bloc, votes.getOrDefault(bloc, new BlocVotes(0, 0, 0)));
+    }
+    return complete;
   }
 }
