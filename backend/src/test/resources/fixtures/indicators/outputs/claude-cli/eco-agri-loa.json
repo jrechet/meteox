@@ -1,0 +1,26 @@
+{
+  "pesticides": {
+    "score": -1,
+    "justification": "L'assouplissement de règles environnementales agricoles affaiblit les protections contre les intrants et atteintes chimiques aux milieux.",
+    "citation": "assouplit des règles environnementales",
+    "confidence": "haute"
+  },
+  "partageEau": {
+    "score": -1.5,
+    "justification": "La sécurisation des projets de stockage d'eau favorise l'accaparement de la ressource par certains usages agricoles au détriment d'un partage équitable.",
+    "citation": "sécurise les projets de stockage d'eau",
+    "confidence": "haute"
+  },
+  "pognonPuissants": {
+    "score": -2,
+    "justification": "En qualifiant l'agriculture d'« intérêt général majeur » tout en dépénalisant des atteintes à la biodiversité, le texte fait prévaloir des intérêts sectoriels organisés sur les protections communes.",
+    "citation": "Qualifie l'agriculture d'\"intérêt général majeur\"",
+    "confidence": "moyenne"
+  },
+  "peupleSante": {
+    "score": -1,
+    "justification": "La dépénalisation d'atteintes à la biodiversité et le recul des règles environnementales dégradent les milieux dont dépend la santé des populations.",
+    "citation": "atteintes à la biodiversité dépénalisées",
+    "confidence": "moyenne"
+  }
+}
