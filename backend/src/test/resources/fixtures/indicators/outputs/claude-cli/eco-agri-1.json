@@ -1,0 +1,26 @@
+{
+  "pesticides": {
+    "score": 1,
+    "justification": "Le texte restreint des polluants éternels persistants, ce qui réduit l'exposition de la population aux substances chimiques dangereuses.",
+    "citation": "restreindre la fabrication et la vente de produits contenant des PFAS",
+    "confidence": "haute"
+  },
+  "partageEau": {
+    "score": 0,
+    "justification": "Le texte ne traite pas directement de la ressource en eau, même si les PFAS sont des contaminants connus des nappes.",
+    "citation": "produits contenant des PFAS",
+    "confidence": "faible"
+  },
+  "pognonPuissants": {
+    "score": 1,
+    "justification": "La restriction s'impose aux industriels malgré leur opposition, mais la concession obtenue sur les ustensiles de cuisine tempère la portée du texte face aux intérêts privés.",
+    "citation": "l'exclusion controversée des ustensiles de cuisine lors des débats parlementaires",
+    "confidence": "moyenne"
+  },
+  "peupleSante": {
+    "score": 1.5,
+    "justification": "Restreindre des polluants éternels réputés toxiques constitue un gain direct de santé publique pour la population exposée.",
+    "citation": "restreindre la fabrication et la vente de produits contenant des PFAS",
+    "confidence": "haute"
+  }
+}
