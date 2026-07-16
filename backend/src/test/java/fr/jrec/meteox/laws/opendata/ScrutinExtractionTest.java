@@ -55,6 +55,30 @@ class ScrutinExtractionTest {
   }
 
   @Test
+  void aggregates_16e_scrutins_from_official_open_data() {
+    // Valeurs officielles (open data AN, agrégées par bloc, validées par la page de scrutin) —
+    // corrigées le 2026-07-16 : elles diffèrent des anciens chiffres du seed/plan.
+    ScrutinExtraction pfas = service.extract(fixture("VTANR5L16V3643.json"));
+    assertEquals("https://www.assemblee-nationale.fr/dyn/16/scrutins/3643", pfas.scrutinUrl());
+    assertEquals(new BlocVotes(98, 0, 0), pfas.votesByBloc().get("gauche"));
+    assertEquals(new BlocVotes(86, 0, 0), pfas.votesByBloc().get("milieu"));
+    assertEquals(new BlocVotes(0, 0, 4), pfas.votesByBloc().get("droite"));
+    assertEquals(new BlocVotes(0, 0, 22), pfas.votesByBloc().get("extremeDroite"));
+
+    ScrutinExtraction aper = service.extract(fixture("VTANR5L16V823.json"));
+    assertEquals(new BlocVotes(28, 91, 24), aper.votesByBloc().get("gauche"));
+    assertEquals(new BlocVotes(257, 2, 6), aper.votesByBloc().get("milieu"));
+    assertEquals(new BlocVotes(1, 56, 4), aper.votesByBloc().get("droite"));
+    assertEquals(new BlocVotes(0, 87, 0), aper.votesByBloc().get("extremeDroite"));
+
+    ScrutinExtraction iv = service.extract(fixture("VTANR5L16V2721.json"));
+    assertEquals(new BlocVotes(0, 61, 16), iv.votesByBloc().get("gauche"));
+    assertEquals(new BlocVotes(154, 0, 2), iv.votesByBloc().get("milieu"));
+    assertEquals(new BlocVotes(29, 1, 1), iv.votesByBloc().get("droite"));
+    assertEquals(new BlocVotes(47, 0, 0), iv.votesByBloc().get("extremeDroite"));
+  }
+
+  @Test
   void unknown_organe_ref_fails_loudly_instead_of_skewing_totals() {
     ScrutinExtractionService svc = new ScrutinExtractionService();
     svc.parser = new ScrutinParser();

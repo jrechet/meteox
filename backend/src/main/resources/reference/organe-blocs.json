@@ -1,5 +1,5 @@
 {
-  "_comment": "Référence organeRef → bloc politique (issue #3). Source : open data AN — jeu AMO10 organes (codeType=GP), sigles officiels. Chaque entrée est traçable vers un groupe officiel. Le mapping en blocs suit docs/plans/lois-sources-fiabilite.md § 3.3 : gauche = LFI+SOC+ÉcoSoc+GDR · milieu = EPR+Dem+HOR+LIOT · droite = DR · extrême droite = RN+UDR · non-inscrits = horsBlocs (exclus des agrégats). Vérifié : l'agrégation open data du scrutin 17e n°844 reproduit exactement les votes vérifiés à la main le 2026-07-14. Législature 16 à compléter (référence organe historique non disponible en open data au 2026-07-16) — cf. commentaire de l'issue #3.",
+  "_comment": "Référence organeRef → bloc politique (issue #3). Sources : sigles officiels des groupes (17e : jeu AMO10 organes codeType=GP ; 16e : identifiés par signature de vote 9-dim sur les pages officielles de scrutin /dyn/16/scrutins/{3643,823,2721}, groupes dissous absents de l'AMO actif). Le mapping en blocs suit docs/plans/lois-sources-fiabilite.md § 3.3 : gauche = LFI+SOC+ÉcoSoc+GDR · milieu = RE/EPR+MoDem/Dem+HOR+LIOT · droite = LR/DR · extrême droite = RN+UDR · non-inscrits = horsBlocs (exclus des agrégats). Vérifié : l'agrégation open data reproduit exactement les votes officiels des scrutins 17e n°844 et 16e n°3643/823/2721. Note : SOC apparaît sous deux organeRefs en 16e (PO830170 puis PO800496, reconstitution de groupe) — les deux → gauche.",
   "organes": [
     { "organeRef": "PO845401", "sigle": "RN",      "legislature": 17, "bloc": "extremeDroite" },
     { "organeRef": "PO847173", "sigle": "UDR",     "legislature": 17, "bloc": "extremeDroite" },
@@ -12,6 +12,19 @@
     { "organeRef": "PO845419", "sigle": "SOC",     "legislature": 17, "bloc": "gauche" },
     { "organeRef": "PO845439", "sigle": "ECOS",    "legislature": 17, "bloc": "gauche" },
     { "organeRef": "PO845514", "sigle": "GDR",     "legislature": 17, "bloc": "gauche" },
-    { "organeRef": "PO840056", "sigle": "NI",      "legislature": 17, "bloc": "horsBlocs" }
+    { "organeRef": "PO840056", "sigle": "NI",      "legislature": 17, "bloc": "horsBlocs" },
+
+    { "organeRef": "PO800538", "sigle": "RE",      "legislature": 16, "bloc": "milieu" },
+    { "organeRef": "PO800484", "sigle": "MODEM",   "legislature": 16, "bloc": "milieu" },
+    { "organeRef": "PO800514", "sigle": "HOR",     "legislature": 16, "bloc": "milieu" },
+    { "organeRef": "PO800532", "sigle": "LIOT",    "legislature": 16, "bloc": "milieu" },
+    { "organeRef": "PO800508", "sigle": "LR",      "legislature": 16, "bloc": "droite" },
+    { "organeRef": "PO800520", "sigle": "RN",      "legislature": 16, "bloc": "extremeDroite" },
+    { "organeRef": "PO800490", "sigle": "LFI-NUPES", "legislature": 16, "bloc": "gauche" },
+    { "organeRef": "PO800526", "sigle": "ECOLO-NUPES", "legislature": 16, "bloc": "gauche" },
+    { "organeRef": "PO800502", "sigle": "GDR-NUPES", "legislature": 16, "bloc": "gauche" },
+    { "organeRef": "PO830170", "sigle": "SOC",     "legislature": 16, "bloc": "gauche" },
+    { "organeRef": "PO800496", "sigle": "SOC",     "legislature": 16, "bloc": "gauche" },
+    { "organeRef": "PO793087", "sigle": "NI",      "legislature": 16, "bloc": "horsBlocs" }
   ]
 }
