@@ -87,10 +87,11 @@
 
 - [x] **Contrôle automatisé des sources** : `scripts/check-sources.mjs` (statut HTTP + fragment de contenu attendu), `npm run check:sources`, bloquant en CI (`deploy.yml`)
 - [x] **Cron quotidien** `check-sources.yml` + ouverture/commentaire d'issue GitHub auto en cas de source invalide
-- [x] Squelette backend Quarkus (REST + SQLite + Flyway) + Dockerfile + scripts build/deploy — mergé (PR #8, CI `backend-ci` verte) ; **déploiement int jrec.fr restant** (punch list dans l'issue #2)
-- [ ] Job serveur `extract-scrutins` : votes par groupe depuis l'open data AN (mapping des groupes documenté)
+- [x] Squelette backend Quarkus (REST + SQLite + Flyway) + Dockerfile + scripts build/deploy — mergé (PR #8, CI `backend-ci` verte)
+- [x] **Déploiement int jrec.fr** — issue #2 fermée le 2026-07-16 : API en ligne à **`https://jrec.fr/meteox-laws-int`** (routage Traefik par chemin sur l'apex, cert LE ; CD `backend-cd.yml` vert avec vérification externe health + CORS à chaque deploy)
+- [ ] Job serveur `extract-scrutins` : votes par groupe depuis l'open data AN — **cœur livré** (parser + agrégation blocs 16e/17e, non-régression sur scrutins réels, PR #17) ; reste persistance + `@Scheduled` (issue #3)
 - [ ] Job serveur `sync-dossiers` : alimentation « Prochains scrutins » (17e législature)
-- [ ] **Module `laws-indicators` (IA multi-backend)** : Claude CLI / Claude API / Ollama derrière une interface commune, scores en `draft` + relecture humaine obligatoire avant publication, justification citée exposée par l'API
+- [x] **Module `laws-indicators` (IA multi-backend)** : Claude CLI / Claude API / Ollama derrière une interface commune, scores en `draft` + relecture humaine obligatoire, justification citée exposée par `GET /api/laws/{id}/indicators` — mergé (PR #12) ; reste l'affichage UI (info-bulle jauges, dépend du front branché — issues #4/#5)
 - [ ] Front : fetch `GET /api/laws` + snapshot JSON de fallback embarqué au build (exclusion au build des cartes non vérifiées)
 - [ ] Extension au **Sénat**
 - [ ] Cache / gestion des quotas de l'API AN
