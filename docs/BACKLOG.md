@@ -25,15 +25,15 @@
 
 ## Issues (créées le 2026-07-14)
 
-| Issue | Domaine métier | Dépend de |
-|---|---|---|
-| [#2 — Backend Quarkus + SQLite (socle données lois, jrec.fr)](https://github.com/jrechet/meteox/issues/2) | Infrastructure données | — |
-| [#3 — Pipeline open data AN (scrutins réels & prochains scrutins)](https://github.com/jrechet/meteox/issues/3) | Données législatives | #2 |
-| [#4 — Module indicateurs IA multi-backend + méthodologie transparente](https://github.com/jrechet/meteox/issues/4) | Scoring éditorial | #2 |
-| [#5 — Front branché sur l'API avec snapshot de fallback](https://github.com/jrechet/meteox/issues/5) | Frontend données | #2 |
-| [#6 — Qualité éditoriale & accessibilité de l'onglet Lois](https://github.com/jrechet/meteox/issues/6) | Éditorial / a11y | — |
+| Issue | Domaine métier | Dépend de | État |
+|---|---|---|---|
+| [#2 — Backend Quarkus + SQLite (socle données lois, jrec.fr)](https://github.com/jrechet/meteox/issues/2) | Infrastructure données | — | ✅ Fermée (2026-07-16) — API int : `https://jrec.fr/meteox-laws-int` |
+| [#3 — Pipeline open data AN (scrutins réels & prochains scrutins)](https://github.com/jrechet/meteox/issues/3) | Données législatives | #2 | 🟡 Cœur extract-scrutins livré ; reste persistance+job, sync-dossiers, corpus, Sénat |
+| [#4 — Module indicateurs IA multi-backend + méthodologie transparente](https://github.com/jrechet/meteox/issues/4) | Scoring éditorial | #2 | 🟡 Backend livré ; reste l'UI (dépend de #5) |
+| [#5 — Front branché sur l'API avec snapshot de fallback](https://github.com/jrechet/meteox/issues/5) | Frontend données | #2 | ⚪ Non commencé — débloquée |
+| [#6 — Qualité éditoriale & accessibilité de l'onglet Lois](https://github.com/jrechet/meteox/issues/6) | Éditorial / a11y | — | ✅ Fermée |
 
-**Parallélisation immédiate possible** : #2 et #6 en simultané. #3, #4, #5 démarrent quand #2 expose `GET /api/laws` en int.
+**Ordre recommandé** (2026-07-16) : #3 tâche 1 (persistance + job, backend pur) ∥ #5 (chemin critique front) → #4 UI (petit incrément post-#5) → #3 tâches 2-4. Contexte de reprise détaillé en commentaire de chaque issue.
 
 ## Hors backlog (non planifié)
 
