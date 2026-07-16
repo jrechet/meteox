@@ -64,11 +64,13 @@ export const LAWS_DATA = [
       peupleSante: 1.5,     // Réduction de l'exposition aux perturbateurs endocriniens
       partageEau: 1.5       // Réduction de la contamination éternelle des nappes phréatiques
     },
+    // Votes corrigés le 2026-07-16 depuis l'open data AN (scrutin n°3643) — les chiffres
+    // précédents (hérités de l'ancien plan) ne concordaient pas avec le décompte officiel.
     votes: {
-      gauche: { for: 95, against: 0, abstained: 0 },
-      milieu: { for: 91, against: 0, abstained: 0 },
-      droite: { for: 0, against: 0, abstained: 15 },
-      extremeDroite: { for: 0, against: 0, abstained: 12 }
+      gauche: { for: 98, against: 0, abstained: 0 },
+      milieu: { for: 86, against: 0, abstained: 0 },
+      droite: { for: 0, against: 0, abstained: 4 },
+      extremeDroite: { for: 0, against: 0, abstained: 22 }
     }
   },
   {
@@ -88,11 +90,12 @@ export const LAWS_DATA = [
       peupleSante: 1.5,     // Limitation de la pollution de l'air et atténuation des canicules
       partageEau: 0
     },
+    // Votes corrigés le 2026-07-16 depuis l'open data AN (scrutin n°823).
     votes: {
-      gauche: { for: 71, against: 62, abstained: 2 },
-      milieu: { for: 215, against: 1, abstained: 0 },
-      droite: { for: 0, against: 55, abstained: 2 },
-      extremeDroite: { for: 0, against: 88, abstained: 0 }
+      gauche: { for: 28, against: 91, abstained: 24 },
+      milieu: { for: 257, against: 2, abstained: 6 },
+      droite: { for: 1, against: 56, abstained: 4 },
+      extremeDroite: { for: 0, against: 87, abstained: 0 }
     }
   },
   {
@@ -112,11 +115,12 @@ export const LAWS_DATA = [
       peupleSante: 1,       // Réduction de l'empreinte carbone industrielle nationale
       partageEau: 0.5       // Soutien à l'économie circulaire et recyclage des ressources
     },
+    // Votes corrigés le 2026-07-16 depuis l'open data AN (scrutin n°2721).
     votes: {
-      gauche: { for: 0, against: 62, abstained: 5 },
-      milieu: { for: 176, against: 0, abstained: 0 },
-      droite: { for: 55, against: 0, abstained: 2 },
-      extremeDroite: { for: 0, against: 0, abstained: 12 }
+      gauche: { for: 0, against: 61, abstained: 16 },
+      milieu: { for: 154, against: 0, abstained: 2 },
+      droite: { for: 29, against: 1, abstained: 1 },
+      extremeDroite: { for: 47, against: 0, abstained: 0 }
     }
   },
   {

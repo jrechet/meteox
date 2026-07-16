@@ -70,7 +70,7 @@ jobs:
     needs: deploy-int
     runs-on: [self-hosted, meteox]
     steps:
-      - name: Wait for service and check health
+      - name: Wait for the service to converge (1/1)
         run: |
           for i in $(seq 1 30); do
             state=$(docker service ls --filter name=mxlawsint_api --format '{{.Replicas}}')
@@ -79,8 +79,19 @@ jobs:
             sleep 5
           done
           [ "$(docker service ls --filter name=mxlawsint_api --format '{{.Replicas}}')" = "1/1" ]
-      - name: Health via Traefik (sans dépendre du DNS public)
+      - name: Health + CORS directement sur l'app (partage du netns du conteneur)
         run: |
-          curl -fsk --resolve meteox-laws.int.jrec.fr:443:127.0.0.1 https://meteox-laws.int.jrec.fr/api/health
+          # On partage le namespace réseau du conteneur applicatif (localhost:8080),
+          # sans dépendre du DNS public, de la terminaison TLS de Traefik, ni d'un réseau attachable.
+          cid=""
+          for i in $(seq 1 30); do
+            cid=$(docker ps -q --filter "label=com.docker.swarm.service.name=mxlawsint_api" | head -1)
+            [ -n "$cid" ] && break
+            sleep 5
+          done
+          [ -n "$cid" ] || { echo "conteneur mxlawsint_api introuvable"; exit 1; }
+          probe() { docker run --rm --network "container:$cid" curlimages/curl:latest "$@"; }
+          probe -fsS http://localhost:8080/api/health
           echo
-          curl -fsk --resolve meteox-laws.int.jrec.fr:443:127.0.0.1 -H "Origin: https://jrechet.github.io" -D - -o /dev/null https://meteox-laws.int.jrec.fr/api/laws | grep -i "access-control-allow-origin"
+          probe -fsS -o /dev/null -D - -H "Origin: https://jrechet.github.io" \
+            http://localhost:8080/api/laws | grep -i "access-control-allow-origin"
