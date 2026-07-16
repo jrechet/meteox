@@ -1,0 +1,17 @@
+{
+  "_comment": "Référence organeRef → bloc politique (issue #3). Source : open data AN — jeu AMO10 organes (codeType=GP), sigles officiels. Chaque entrée est traçable vers un groupe officiel. Le mapping en blocs suit docs/plans/lois-sources-fiabilite.md § 3.3 : gauche = LFI+SOC+ÉcoSoc+GDR · milieu = EPR+Dem+HOR+LIOT · droite = DR · extrême droite = RN+UDR · non-inscrits = horsBlocs (exclus des agrégats). Vérifié : l'agrégation open data du scrutin 17e n°844 reproduit exactement les votes vérifiés à la main le 2026-07-14. Législature 16 à compléter (référence organe historique non disponible en open data au 2026-07-16) — cf. commentaire de l'issue #3.",
+  "organes": [
+    { "organeRef": "PO845401", "sigle": "RN",      "legislature": 17, "bloc": "extremeDroite" },
+    { "organeRef": "PO847173", "sigle": "UDR",     "legislature": 17, "bloc": "extremeDroite" },
+    { "organeRef": "PO845407", "sigle": "EPR",     "legislature": 17, "bloc": "milieu" },
+    { "organeRef": "PO845454", "sigle": "DEM",     "legislature": 17, "bloc": "milieu" },
+    { "organeRef": "PO845470", "sigle": "HOR",     "legislature": 17, "bloc": "milieu" },
+    { "organeRef": "PO845485", "sigle": "LIOT",    "legislature": 17, "bloc": "milieu" },
+    { "organeRef": "PO845425", "sigle": "DR",      "legislature": 17, "bloc": "droite" },
+    { "organeRef": "PO845413", "sigle": "LFI-NFP", "legislature": 17, "bloc": "gauche" },
+    { "organeRef": "PO845419", "sigle": "SOC",     "legislature": 17, "bloc": "gauche" },
+    { "organeRef": "PO845439", "sigle": "ECOS",    "legislature": 17, "bloc": "gauche" },
+    { "organeRef": "PO845514", "sigle": "GDR",     "legislature": 17, "bloc": "gauche" },
+    { "organeRef": "PO840056", "sigle": "NI",      "legislature": 17, "bloc": "horsBlocs" }
+  ]
+}
