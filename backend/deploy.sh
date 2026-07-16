@@ -13,4 +13,4 @@ export MX_TAG="${MX_ENV}-$(git rev-parse --short HEAD)"
 
 docker stack deploy -c docker-compose.yml "${MX_STACK}"
 
-echo "Stack ${MX_STACK} déployée avec ${MX_IMAGE}:${MX_TAG} (https://${MX_DOMAIN}/api/health)"
+echo "Stack ${MX_STACK} déployée avec ${MX_IMAGE}:${MX_TAG} (https://${MX_DOMAIN}${MX_PATH_PREFIX:-}/api/health)"
