@@ -1,0 +1,129 @@
+package fr.jrec.meteox.laws.opendata;
+
+import fr.jrec.meteox.laws.opendata.DossierParser.ParsedDossier;
+import fr.jrec.meteox.laws.repository.LawRepository;
+import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
+import java.util.Locale;
+import java.util.Optional;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.jboss.logging.Logger;
+
+/**
+ * Détecte dans l'open data AN les dossiers 17e à thème environnemental encore en cours et les
+ * verse dans la table de staging {@code dossier_candidates} (issue #3, tâche 2). RIEN n'est
+ * publié ici : la promotion en carte {@code upcoming} passe par une validation humaine (le flux
+ * brut est trop bruité). Sécurité : dès qu'un dossier promu devient promulgué, la loi upcoming
+ * correspondante est dépubliée (« une loi promulguée ne reste jamais à venir »).
+ */
+@ApplicationScoped
+public class DossierSyncService {
+
+  private static final Logger LOG = Logger.getLogger(DossierSyncService.class);
+
+  // Mots-clés thématiques (frontières de mot, sur titre normalisé sans accents). Volontairement
+  // large : le tri fin est fait par la validation humaine, pas par ce filtre grossier.
+  private static final Pattern THEME =
+      Pattern.compile(
+          "\\b(eaux?|pesticides?|glyphosate|pfas|climat\\w*|canicul\\w*|energ\\w*|renouvelabl\\w*"
+              + "|carbone|agricol\\w*|agricultur\\w*|pesticide\\w*|biodiversit\\w*|environnement\\w*"
+              + "|pollution\\w*|ecologi\\w*|nappe\\w*|zones? humides?|littoral\\w*|forets?)\\b");
+
+  @Inject OpenDataDossiers openData;
+  @Inject DossierRepository candidates;
+  @Inject LawRepository laws;
+
+  @ConfigProperty(name = "meteox.sync-dossiers.legislature", defaultValue = "17")
+  int legislature;
+
+  /** Bilan d'une passe de synchronisation. */
+  public record SyncReport(int scanned, int candidates, int demoted) {}
+
+  public SyncReport syncAll() {
+    var stats = new int[3]; // [scanned, candidates, demoted]
+    try {
+      openData.forEachDossier(
+          legislature,
+          d -> {
+            stats[0]++;
+            // Sécurité d'abord (indépendante du filtre thématique) : un dossier promulgué ne
+            // doit jamais rester une carte « à venir » — on dépublie la loi promue le cas échéant.
+            if (d.promulgated() && demoteIfPromoted(d)) {
+              stats[2]++;
+            }
+            Optional<String> theme = matchTheme(d.titre());
+            if (theme.isEmpty()) {
+              return;
+            }
+            stats[1]++;
+            candidates.upsert(d.uid(), d.legislature(), d.titre(), d.url(), theme.get(), d.promulgated());
+          });
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.error("Synchronisation des dossiers interrompue");
+    } catch (Exception e) {
+      LOG.errorf(e, "Synchronisation des dossiers impossible (%s)", e.getMessage());
+    }
+    LOG.infof(
+        "sync-dossiers : %d dossier(s) scanné(s), %d candidat(s) thématique(s), %d dépublié(s)",
+        stats[0], stats[1], stats[2]);
+    return new SyncReport(stats[0], stats[1], stats[2]);
+  }
+
+  /**
+   * Validation humaine : promeut un candidat en carte {@code upcoming} publiée (issue #3).
+   * L'humain fournit les champs éditoriaux (catégorie, résumé, date prévue, fragment attendu
+   * pour la vérification de source). Rend l'identifiant de la loi créée.
+   */
+  public String promote(
+      String uid, String category, String date, String summary, String sourceExpect) {
+    DossierRepository.Candidate c =
+        candidates
+            .findByUid(uid)
+            .orElseThrow(() -> new IllegalArgumentException("Candidat inconnu : " + uid));
+    if (c.terminated()) {
+      throw new IllegalStateException("Dossier promulgué/clos : ne peut pas devenir « à venir »");
+    }
+    if ("promoted".equals(c.status())) {
+      throw new IllegalStateException("Candidat déjà promu : " + uid);
+    }
+    String fragment = (sourceExpect == null || sourceExpect.isBlank()) ? c.titre() : sourceExpect;
+    laws.insertUpcoming(
+        uid, c.titre(), category, date, summary, c.dossierUrl(), fragment, c.dossierUrl(), fragment);
+    candidates.markPromoted(uid, uid);
+    LOG.infof("Candidat %s promu en carte upcoming (catégorie %s)", uid, category);
+    return uid;
+  }
+
+  /** Écarte un candidat non pertinent (il ne sera plus proposé à la relecture). */
+  public void reject(String uid) {
+    candidates.markRejected(uid);
+  }
+
+  /** Dépublie la carte upcoming issue d'un dossier désormais promulgué. Vrai si une loi a été dépubliée. */
+  private boolean demoteIfPromoted(ParsedDossier d) {
+    Optional<String> lawId = candidates.promotedLawId(d.uid());
+    if (lawId.isEmpty()) {
+      return false;
+    }
+    laws.unpublish(lawId.get());
+    candidates.markTerminated(d.uid());
+    LOG.warnf("Dossier %s promulgué : carte upcoming %s dépubliée", d.uid(), lawId.get());
+    return true;
+  }
+
+  /** Premier mot-clé thématique présent dans le titre (comparaison sans accents), s'il y en a un. */
+  static Optional<String> matchTheme(String titre) {
+    Matcher m = THEME.matcher(normalize(titre));
+    return m.find() ? Optional.of(m.group(1)) : Optional.empty();
+  }
+
+  private static String normalize(String s) {
+    String noAccents =
+        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
+            .replaceAll("\\p{M}", "");
+    return noAccents.toLowerCase(Locale.FRENCH);
+  }
+}

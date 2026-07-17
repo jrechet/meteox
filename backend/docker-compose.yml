@@ -11,7 +11,10 @@ services:
     environment:
       MX_ENV: "${MX_ENV:-int}"
       MX_DB_PATH: /data/meteox-laws.db
+      MX_OPENDATA_DIR: /data/opendata
       MX_GITHUB_TOKEN: "${MX_GITHUB_TOKEN:-}"
+      # Admin (validation humaine indicateurs #4 + dossiers #3) — vide = admin fermé (503).
+      MX_ADMIN_TOKEN: "${MX_ADMIN_TOKEN:-}"
       QUARKUS_HTTP_CORS_ORIGINS: "${MX_CORS_ORIGINS:-https://jrechet.github.io}"
     volumes:
       # Volume persistant : le fichier SQLite survit aux redéploiements.
