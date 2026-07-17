@@ -28,7 +28,7 @@
 | Issue | Domaine métier | Dépend de | État |
 |---|---|---|---|
 | [#2 — Backend Quarkus + SQLite (socle données lois, jrec.fr)](https://github.com/jrechet/meteox/issues/2) | Infrastructure données | — | ✅ Fermée (2026-07-16) — API int : `https://jrec.fr/meteox-laws-int` |
-| [#3 — Pipeline open data AN (scrutins réels & prochains scrutins)](https://github.com/jrechet/meteox/issues/3) | Données législatives | #2 | 🟡 Tâche 1 (extract-scrutins) complète et déployée ; reste sync-dossiers, corpus, Sénat |
+| [#3 — Pipeline open data AN (scrutins réels & prochains scrutins)](https://github.com/jrechet/meteox/issues/3) | Données législatives | #2 | 🟡 Tâches 1 (extract-scrutins) + 2 (sync-dossiers) livrées et déployées ; reste corpus élargi (t3), note Sénat (t4) |
 | [#4 — Module indicateurs IA multi-backend + méthodologie transparente](https://github.com/jrechet/meteox/issues/4) | Scoring éditorial | #2 | ✅ Fermée (2026-07-17) — UI « Pourquoi ces scores ? » (PR #22) |
 | [#5 — Front branché sur l'API avec snapshot de fallback](https://github.com/jrechet/meteox/issues/5) | Frontend données | #2 | ✅ Fermée (2026-07-17) — API + snapshot (PR #21), plus de données en dur |
 | [#6 — Qualité éditoriale & accessibilité de l'onglet Lois](https://github.com/jrechet/meteox/issues/6) | Éditorial / a11y | — | ✅ Fermée |
