@@ -65,6 +65,9 @@ jobs:
           MX_PATH_PREFIX: /meteox-laws-int
           MX_CORS_ORIGINS: https://jrechet.github.io
           MX_GITHUB_TOKEN: ${{ secrets.MX_GITHUB_TOKEN }}
+          # Secret optionnel : sans lui l'admin reste fermé (503). À créer côté GitHub pour
+          # activer la validation humaine des candidats dossiers / indicateurs.
+          MX_ADMIN_TOKEN: ${{ secrets.MX_ADMIN_TOKEN }}
         run: docker stack up --detach=true -c docker-compose.yml mxlawsint
 
   verify-int:

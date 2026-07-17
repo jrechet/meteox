@@ -110,6 +110,37 @@ public class LawRepository {
         });
   }
 
+  /**
+   * Crée une carte {@code upcoming} publiée à partir d'un dossier validé (issue #3, tâche 2).
+   * Indicateurs et votes sont vides au départ (aucun scrutin encore) ; check-sources vérifiera
+   * l'URL du dossier. Rejette si l'identifiant existe déjà.
+   */
+  public void insertUpcoming(
+      String id,
+      String title,
+      String category,
+      String date,
+      String summary,
+      String sourceUrl,
+      String sourceExpect,
+      String textUrl,
+      String textExpect) {
+    execute(
+        "INSERT INTO laws (id, title, category, status, date, summary, source_url, source_expect,"
+            + " text_url, text_expect, published) VALUES (?, ?, ?, 'upcoming', ?, ?, ?, ?, ?, ?, 1)",
+        ps -> {
+          ps.setString(1, id);
+          ps.setString(2, title);
+          ps.setString(3, category);
+          ps.setString(4, date);
+          ps.setString(5, summary);
+          ps.setString(6, sourceUrl);
+          ps.setString(7, sourceExpect);
+          ps.setString(8, textUrl);
+          ps.setString(9, textExpect);
+        });
+  }
+
   public void recordSourceCheck(
       String lawId, String field, String url, Integer httpStatus, boolean ok, String reason) {
     execute(
