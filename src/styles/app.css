@@ -1319,19 +1319,26 @@ footer.foot {
 
 /* Party votes styling */
 .vote-group {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-2);
   font-size: var(--text-xs);
 }
 
+.vote-group + .vote-group {
+  margin-top: 0.6rem;
+}
+
+/* Nom sur sa propre ligne : plus de retour à la ligne disgracieux (« Horizons) » orphelin). */
 .vote-group__name {
-  flex: 0 0 160px;
+  display: block;
   color: var(--color-ink-soft);
-  font-weight: 500;
+  font-weight: 600;
   line-height: 1.25;
-  overflow-wrap: break-word;
+  margin-bottom: 0.3rem;
+}
+
+.vote-group__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
 }
 
 .vote-group__bar {
@@ -1360,11 +1367,17 @@ footer.foot {
 }
 
 .vote-group__numbers {
-  flex: 0 0 70px;
-  text-align: right;
+  flex: 0 0 auto;
+  display: flex;
+  gap: 0.55rem;
   font-family: var(--font-body);
   font-weight: 700;
-  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.vote-num {
+  white-space: nowrap;
 }
 
 .pcard__actions {
@@ -1615,6 +1628,10 @@ footer.foot {
 
 .vote-num--against {
   color: oklch(50% 0.22 28);
+}
+
+.vote-num--abstained {
+  color: var(--color-ink-faint);
 }
 
 
