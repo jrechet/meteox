@@ -24,6 +24,9 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      # Snapshot des lois régénéré depuis l'API backend (fallback : snapshot committé,
+      # refusé s'il est vide ou périmé) — c'est LA donnée qui part dans le bundle.
+      - run: npm run generate:snapshot
       - run: npm test
       - run: npm run check:sources
       - run: npx playwright install --with-deps chromium
@@ -39,6 +42,7 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
+      - run: npm run generate:snapshot
       - run: npm run build
       - uses: actions/configure-pages@v5
         with:

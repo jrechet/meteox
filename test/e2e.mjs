@@ -3,6 +3,7 @@
 // mocks every Open-Meteo call so the run never depends on the live API.
 // Guards the regressions from this session: mobile overflow, tab/chip/date
 // interactions, and dual-map stacking. Run: `npm run test:e2e`.
+import { readFileSync } from 'node:fs';
 import { preview } from 'vite';
 import { chromium } from 'playwright';
 
@@ -106,11 +107,35 @@ async function run() {
     await page.setViewportSize({ width: 1280, height: 1600 });
     check(await overflow(), 'no horizontal overflow at 1280');
 
-    console.log('[politics] Lois & Climat tab');
+    console.log('[politics] Lois & Climat tab — API up (mockée)');
+    // Acceptance issue #5 : API up → données API affichées + indicateur de fraîcheur.
+    const apiLaws = JSON.parse(readFileSync(new URL('../src/data/laws-snapshot.json', import.meta.url), 'utf8')).laws;
+    await page.route(/jrec\.fr\/meteox-laws-int\/api\/laws/, (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        // CORS : le front tourne sur localhost, l'API mockée doit l'autoriser comme la vraie.
+        headers: { 'access-control-allow-origin': '*' },
+        body: JSON.stringify(apiLaws),
+      }),
+    );
     await page.locator('[data-nav="politics"]').click();
-    check(await page.locator('.pcard').count() > 0, 'politics tab renders passed law cards');
+    // Le squelette de chargement porte aussi .pcard : attendre le rendu final (fraîcheur).
+    await page.locator('.politics-freshness').waitFor({ timeout: 5000 });
+    check(
+      (await page.locator('.pcard:not(.pcard--skeleton)').count()) > 0,
+      'politics tab renders passed law cards',
+    );
+    check(
+      (await page.locator('.politics-freshness[data-source="api"]').count()) === 1,
+      'freshness indicator shows live API data',
+    );
     check(await page.locator('.rail--bar').first().isHidden(), 'year slider is hidden in politics mode');
-    check(await overflow(), 'no horizontal overflow in politics mode');
+    // Revue responsive (DoD) : pas d'overflow aux 4 breakpoints sur l'onglet Lois.
+    for (const w of [375, 768, 1280, 1920]) {
+      await page.setViewportSize({ width: w, height: 1600 });
+      check(await overflow(), `no horizontal overflow in politics mode at ${w}`);
+    }
 
     // Golden Rule: upcoming cards only exist with a verified source; otherwise an honest empty state.
     const upcomingCount = await page.locator('.pcard--upcoming').count();
@@ -135,6 +160,34 @@ async function run() {
       await page.locator('.cmodal [data-action="close-modal"]').click();
       check(await page.locator('.cmodal').count() === 0, 'interpellation modal closes');
     }
+
+    // Acceptance issue #5 : API down → bascule transparente sur le snapshot embarqué,
+    // cartes affichées, indicateur honnête, aucune erreur console.
+    console.log('[politics] API down → fallback snapshot');
+    const page2 = await ctx.newPage();
+    const errors2 = [];
+    page2.on('console', (m) => m.type() === 'error' && errors2.push(m.text()));
+    await page2.route(/open-meteo\.com|bigdatacloud\.net/, (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockResponse(route.request().url())) }),
+    );
+    await page2.route(/jrec\.fr\/meteox-laws-int/, (route) => route.abort('connectionfailed'));
+    await page2.goto(base, { waitUntil: 'networkidle' });
+    await page2.locator('[data-nav="politics"]').click();
+    await page2.locator('.politics-freshness').waitFor({ timeout: 8000 });
+    check(
+      (await page2.locator('.pcard:not(.pcard--skeleton)').count()) > 0,
+      'snapshot laws render when API is down',
+    );
+    check(
+      (await page2.locator('.politics-freshness[data-source="snapshot"]').count()) === 1,
+      'freshness indicator honestly labels archived snapshot data',
+    );
+    // Le navigateur logge lui-même l'échec réseau ("Failed to load resource") — inévitable
+    // et attendu quand l'API est down. On vérifie qu'AUCUNE erreur applicative ne s'ajoute.
+    const appErrors2 = errors2.filter((e) => !e.startsWith('Failed to load resource'));
+    check(appErrors2.length === 0, `no app console errors with API down (saw ${appErrors2.length})`);
+    if (appErrors2.length) appErrors2.forEach((e) => console.error('    console:', e));
+    await page2.close();
 
     check(errors.length === 0, `no console errors (saw ${errors.length})`);
     if (errors.length) errors.forEach((e) => console.error('    console:', e));

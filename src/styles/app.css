@@ -1619,3 +1619,53 @@ footer.foot {
 
 
 
+
+/* ---------- Onglet Lois : fraîcheur des données & squelette de chargement (issue #5) ---------- */
+
+.politics-freshness {
+  margin: 0 0 var(--space-3, 0.75rem);
+  font-size: 0.78rem;
+  color: var(--color-ink-faint);
+  text-align: right;
+}
+
+.politics-freshness[data-source='snapshot'] {
+  color: var(--color-ink-soft);
+}
+
+.politics-freshness[data-source='snapshot']::before {
+  content: '◦ ';
+  color: oklch(70% 0.14 70);
+}
+
+.pcard--skeleton {
+  pointer-events: none;
+  min-height: 340px;
+}
+
+.skel {
+  border-radius: 6px;
+  background: linear-gradient(
+    100deg,
+    var(--color-bg-alt) 40%,
+    var(--color-surface) 50%,
+    var(--color-bg-alt) 60%
+  );
+  background-size: 200% 100%;
+  animation: skel-shimmer 1.4s ease-in-out infinite;
+}
+
+.skel--badge { width: 38%; height: 0.9rem; margin-bottom: 0.9rem; }
+.skel--title { width: 82%; height: 1.3rem; margin-bottom: 0.8rem; }
+.skel--line { width: 100%; height: 0.8rem; margin-bottom: 0.5rem; }
+.skel--short { width: 64%; }
+.skel--block { width: 100%; height: 160px; margin-top: 1rem; }
+
+@keyframes skel-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel { animation: none; }
+}
