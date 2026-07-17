@@ -38,10 +38,22 @@ public class DossierSyncService {
   @ConfigProperty(name = "meteox.sync-dossiers.legislature", defaultValue = "17")
   int legislature;
 
+  private final java.util.concurrent.atomic.AtomicBoolean running =
+      new java.util.concurrent.atomic.AtomicBoolean(false);
+
   /** Bilan d'une passe de synchronisation. */
   public record SyncReport(int scanned, int candidates, int demoted) {}
 
+  /** Une passe est-elle en cours ? (le téléchargement + parcours prend ~1-2 min). */
+  public boolean isRunning() {
+    return running.get();
+  }
+
   public SyncReport syncAll() {
+    if (!running.compareAndSet(false, true)) {
+      LOG.info("sync-dossiers : une passe est déjà en cours, celle-ci est ignorée");
+      return new SyncReport(0, 0, 0);
+    }
     var stats = new int[3]; // [scanned, candidates, demoted]
     try {
       openData.forEachDossier(
@@ -65,6 +77,8 @@ public class DossierSyncService {
       LOG.error("Synchronisation des dossiers interrompue");
     } catch (Exception e) {
       LOG.errorf(e, "Synchronisation des dossiers impossible (%s)", e.getMessage());
+    } finally {
+      running.set(false);
     }
     LOG.infof(
         "sync-dossiers : %d dossier(s) scanné(s), %d candidat(s) thématique(s), %d dépublié(s)",
