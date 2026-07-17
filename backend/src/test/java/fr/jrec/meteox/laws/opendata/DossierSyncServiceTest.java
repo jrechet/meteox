@@ -3,7 +3,10 @@ package fr.jrec.meteox.laws.opendata;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
+import static org.hamcrest.CoreMatchers.anyOf;
+import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.CoreMatchers.not;
 import static org.hamcrest.CoreMatchers.hasItem;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -151,6 +154,20 @@ class DossierSyncServiceTest {
         .statusCode(200)
         .body("findAll { it.status == 'upcoming' }.id", hasItem(EAU));
     assertEquals("promoted", candidates.findByUid(EAU).orElseThrow().status());
+  }
+
+  @Test
+  void sync_endpoint_is_async_and_token_guarded() throws Exception {
+    stubDataset(17, zipOf()); // zip vide : la passe de fond se termine vite
+    // Sans token → refusé.
+    when().post("/api/admin/dossiers/sync").then().statusCode(401);
+    // Avec token → rend la main immédiatement (202 lancé, ou 200 si déjà en cours), jamais bloquant.
+    given()
+        .header("X-Admin-Token", "test-admin-token")
+        .when()
+        .post("/api/admin/dossiers/sync")
+        .then()
+        .statusCode(anyOf(is(202), is(200)));
   }
 
   @Test
