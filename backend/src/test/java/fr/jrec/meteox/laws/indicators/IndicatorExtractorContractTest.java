@@ -8,10 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.core.json.JsonReadFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
@@ -33,8 +31,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 /**
  * Acceptance issue #4 : les 3 backends (claude-cli, claude-api, ollama) passent le MÊME contrat de
  * test, sur réponses enregistrées/mockées — AUCUN appel réseau réel. Corpus : les 4 lois vérifiées
- * (textes sources lus depuis src/lib/laws.js, sorties modèle archivées dans
- * src/test/resources/fixtures/indicators/outputs/).
+ * (textes sources lus depuis le snapshot committé src/data/laws-snapshot.json, sorties modèle
+ * archivées dans src/test/resources/fixtures/indicators/outputs/).
  */
 class IndicatorExtractorContractTest {
 
@@ -55,8 +53,8 @@ class IndicatorExtractorContractTest {
   static void setUp() throws Exception {
     wireMock = new WireMockServer(WireMockConfiguration.options().dynamicPort());
     wireMock.start();
-    corpus = loadCorpusFromLawsJs();
-    assertEquals(4, corpus.size(), "les 4 lois vérifiées de laws.js sont attendues");
+    corpus = loadCorpusFromSnapshot();
+    assertEquals(4, corpus.size(), "les 4 lois vérifiées du snapshot sont attendues");
   }
 
   @AfterAll
@@ -160,21 +158,13 @@ class IndicatorExtractorContractTest {
     }
   }
 
-  /** Textes sources = résumés vérifiés de src/lib/laws.js (mêmes données que la base, cf. V2). */
-  private static Map<String, LawText> loadCorpusFromLawsJs() throws Exception {
-    String js = Files.readString(Path.of("..", "src", "lib", "laws.js"));
-    int marker = js.indexOf("LAWS_DATA = [");
-    String array = js.substring(js.indexOf('[', marker), js.lastIndexOf(']') + 1);
-    ObjectMapper lenient =
-        JsonMapper.builder()
-            .enable(JsonReadFeature.ALLOW_JAVA_COMMENTS)
-            .enable(JsonReadFeature.ALLOW_SINGLE_QUOTES)
-            .enable(JsonReadFeature.ALLOW_UNQUOTED_FIELD_NAMES)
-            .enable(JsonReadFeature.ALLOW_TRAILING_COMMA)
-            .enable(JsonReadFeature.ALLOW_BACKSLASH_ESCAPING_ANY_CHARACTER)
-            .build();
+  /** Textes sources = titres/résumés vérifiés du snapshot committé (mêmes données que la base). */
+  private static Map<String, LawText> loadCorpusFromSnapshot() throws Exception {
+    JsonNode laws =
+        MAPPER.readTree(Files.readString(Path.of("..", "src", "data", "laws-snapshot.json")))
+            .path("laws");
     var out = new LinkedHashMap<String, LawText>();
-    for (JsonNode law : lenient.readTree(array)) {
+    for (JsonNode law : laws) {
       out.put(
           law.path("id").asText(),
           new LawText(
