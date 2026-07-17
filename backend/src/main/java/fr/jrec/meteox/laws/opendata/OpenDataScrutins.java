@@ -93,46 +93,71 @@ public class OpenDataScrutins {
       request.header("If-None-Match", Files.readString(etagFile).trim());
     }
 
+    // Le zip pèse ~26 Mo : on le streame directement sur disque, jamais bufferisé en tas (heap).
+    Path tmp = Files.createTempFile(dir, legislature + "-", ".zip.part");
     try {
-      HttpResponse<byte[]> response =
-          client.send(request.build(), HttpResponse.BodyHandlers.ofByteArray());
+      HttpResponse<Path> response;
+      try {
+        response = client.send(request.build(), HttpResponse.BodyHandlers.ofFile(tmp));
+      } catch (IOException networkError) {
+        return reuseCacheOrThrow(zip, legislature, networkError);
+      }
+
       if (response.statusCode() == 304) {
         LOG.debugf("Jeu Scrutins %de législature inchangé (ETag)", legislature);
       } else if (response.statusCode() == 200) {
-        Path tmp = Files.createTempFile(dir, legislature + "-", ".zip.part");
-        Files.write(tmp, response.body());
-        Files.move(tmp, zip, StandardCopyOption.REPLACE_EXISTING);
-        response
-            .headers()
-            .firstValue("ETag")
-            .ifPresent(
-                etag -> {
-                  try {
-                    Files.writeString(etagFile, etag);
-                  } catch (IOException e) {
-                    LOG.warnf("ETag non persisté pour la législature %d", legislature);
-                  }
-                });
-        LOG.infof(
-            "Jeu Scrutins %de législature téléchargé (%d octets)",
-            legislature, response.body().length);
+        try {
+          Files.move(tmp, zip, StandardCopyOption.REPLACE_EXISTING);
+          response
+              .headers()
+              .firstValue("ETag")
+              .ifPresent(
+                  etag -> {
+                    try {
+                      Files.writeString(etagFile, etag);
+                    } catch (IOException e) {
+                      LOG.warnf("ETag non persisté pour la législature %d", legislature);
+                    }
+                  });
+          LOG.infof(
+              "Jeu Scrutins %de législature téléchargé (%d octets)", legislature, Files.size(zip));
+        } catch (IOException diskError) {
+          // Échec local (déplacement atomique, lecture taille...) : pas une indisponibilité
+          // réseau — ne pas induire en erreur avec le message « Open data AN indisponible ».
+          LOG.errorf(
+              diskError, "Échec local d'écriture du jeu Scrutins (lég. %d)", legislature);
+          throw diskError;
+        }
       } else {
-        throw new IOException(
-            "Téléchargement du jeu Scrutins (lég. " + legislature + ") → HTTP "
-                + response.statusCode());
+        return reuseCacheOrThrow(
+            zip,
+            legislature,
+            new IOException(
+                "Téléchargement du jeu Scrutins (lég. " + legislature + ") → HTTP "
+                    + response.statusCode()));
       }
-    } catch (IOException e) {
-      if (Files.exists(zip)) {
-        // Les scrutins passés sont immuables : le cache reste une source valable.
-        LOG.warnf(
-            "Open data AN indisponible (%s) — réutilisation du zip en cache pour la lég. %d",
-            e.getMessage(), legislature);
-        return zip;
-      }
-      throw e;
+    } finally {
+      // Le fichier .part ne doit jamais traîner sur le volume, qu'il ait été déplacé (no-op)
+      // ou abandonné suite à un échec (304, HTTP en erreur, exception réseau ou disque).
+      Files.deleteIfExists(tmp);
     }
     lastChecked.put(legislature, Instant.now());
     return zip;
+  }
+
+  /**
+   * Les scrutins passés sont immuables : en cas d'indisponibilité réseau/HTTP, le cache disque
+   * reste une source valable. Sans cache, l'échec remonte tel quel.
+   */
+  private static Path reuseCacheOrThrow(Path zip, int legislature, IOException cause)
+      throws IOException {
+    if (Files.exists(zip)) {
+      LOG.warnf(
+          "Open data AN indisponible (%s) — réutilisation du zip en cache pour la lég. %d",
+          cause.getMessage(), legislature);
+      return zip;
+    }
+    throw cause;
   }
 
   /** Les entrées du zip AN portent un préfixe de dossier (ex. json/VTANR5L17V844.json). */
