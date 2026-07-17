@@ -10,7 +10,12 @@ public class ScrutinSyncJob {
 
   @Inject ScrutinSyncService service;
 
-  @Scheduled(cron = "{meteox.sync-scrutins.cron}", identity = "sync-scrutins")
+  // SKIP : une passe de synchronisation peut dépasser 24h en cas de lenteur/retry réseau ;
+  // évite deux exécutions concurrentes qui écriraient en base en même temps.
+  @Scheduled(
+      cron = "{meteox.sync-scrutins.cron}",
+      identity = "sync-scrutins",
+      concurrentExecution = Scheduled.ConcurrentExecution.SKIP)
   void run() {
     service.syncAll();
   }
