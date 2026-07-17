@@ -4,7 +4,13 @@
 // expected title fragment (sourceExpect/textExpect in laws.js).
 // Run: npm run check:sources  (exit code 1 if any source is invalid)
 import { setDefaultResultOrder } from 'node:dns';
-import { LAWS_DATA } from '../src/lib/laws.js';
+import { readFileSync } from 'node:fs';
+
+// Le check opère sur le snapshot embarqué au build (issue #5) — la donnée qui part
+// réellement dans le bundle — régénéré depuis l'API par scripts/generate-snapshot.mjs.
+const LAWS_DATA = JSON.parse(
+  readFileSync(new URL('../src/data/laws-snapshot.json', import.meta.url), 'utf8'),
+).laws;
 
 setDefaultResultOrder('ipv4first');
 

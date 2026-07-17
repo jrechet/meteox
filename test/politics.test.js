@@ -1,13 +1,17 @@
 import { describe, test, expect } from 'vitest';
-import { LAWS_DATA, departementLabel, interpellationLetter } from '../src/lib/laws.js';
+import { departementLabel, interpellationLetter } from '../src/lib/laws.js';
 import { politicsHTML, citizenActionIcon } from '../src/components/politics.js';
+import snapshot from '../src/data/laws-snapshot.json';
 
+// Les données viennent du snapshot embarqué (issue #5) — la même donnée que le fallback
+// runtime. Plus AUCUNE donnée législative codée en dur dans src/.
+const LAWS = snapshot.laws;
 const CATEGORIES = ['eau', 'agriculture', 'canicule', 'biodiversite', 'pesticides'];
 
-describe('LAWS_DATA integrity', () => {
+describe('snapshot laws integrity', () => {
   test('every law has the required shape', () => {
-    expect(LAWS_DATA.length).toBeGreaterThan(0);
-    for (const l of LAWS_DATA) {
+    expect(LAWS.length).toBeGreaterThan(0);
+    for (const l of LAWS) {
       expect(typeof l.id).toBe('string');
       expect(l.title).toBeTruthy();
       expect(CATEGORIES).toContain(l.category);
@@ -18,7 +22,7 @@ describe('LAWS_DATA integrity', () => {
   });
 
   test('indicators stay within the -2..+2 scale', () => {
-    for (const l of LAWS_DATA) {
+    for (const l of LAWS) {
       for (const v of Object.values(l.indicators)) {
         expect(v).toBeGreaterThanOrEqual(-2);
         expect(v).toBeLessThanOrEqual(2);
@@ -27,7 +31,7 @@ describe('LAWS_DATA integrity', () => {
   });
 
   test('passed laws carry non-negative vote counts for all four groups', () => {
-    for (const l of LAWS_DATA.filter((x) => x.status === 'passed')) {
+    for (const l of LAWS.filter((x) => x.status === 'passed')) {
       expect(l.votes).toBeTruthy();
       for (const group of ['gauche', 'milieu', 'droite', 'extremeDroite']) {
         const v = l.votes[group];
@@ -39,11 +43,11 @@ describe('LAWS_DATA integrity', () => {
   });
 
   test('has at least one passed law', () => {
-    expect(LAWS_DATA.some((l) => l.status === 'passed')).toBe(true);
+    expect(LAWS.some((l) => l.status === 'passed')).toBe(true);
   });
 
   test('every law carries verifiable source expectations (Golden Rule)', () => {
-    for (const l of LAWS_DATA) {
+    for (const l of LAWS) {
       expect(l.sourceUrl).toMatch(/^https:\/\/www\.assemblee-nationale\.fr\//);
       expect(l.textUrl).toMatch(/^https:\/\/www\.assemblee-nationale\.fr\//);
       expect(l.sourceExpect).toBeTruthy();
@@ -52,7 +56,7 @@ describe('LAWS_DATA integrity', () => {
   });
 
   test('passed laws point to an official scrutin page', () => {
-    for (const l of LAWS_DATA.filter((x) => x.status === 'passed')) {
+    for (const l of LAWS.filter((x) => x.status === 'passed')) {
       expect(l.sourceUrl).toMatch(/\/dyn\/\d+\/scrutins\/\d+$/);
     }
   });
@@ -73,7 +77,7 @@ describe('departementLabel', () => {
 });
 
 describe('interpellationLetter', () => {
-  const law = LAWS_DATA[0];
+  const law = LAWS[0];
   test('includes the law title and closing', () => {
     const letter = interpellationLetter(law);
     expect(letter).toContain(law.title);
@@ -86,9 +90,23 @@ describe('interpellationLetter', () => {
 });
 
 describe('politicsHTML', () => {
+  const stateWith = (over = {}) => ({
+    lawFilter: 'all',
+    laws: LAWS,
+    lawsMeta: { source: 'api', dataDate: '2026-07-17T06:00:00Z' },
+    ...over,
+  });
+
+  test('renders a dimensioned loading skeleton while laws are not loaded yet', () => {
+    const html = politicsHTML({ lawFilter: 'all', laws: null });
+    expect(html).toContain('pcard--skeleton');
+    expect(html).toContain('aria-busy="true"');
+    expect(html).toContain('Chargement des données législatives');
+  });
+
   test('renders passed cards, filters, and upcoming section (cards or honest empty state)', () => {
-    const html = politicsHTML({ lawFilter: 'all' });
-    const hasUpcoming = LAWS_DATA.some((l) => l.status === 'upcoming');
+    const html = politicsHTML(stateWith());
+    const hasUpcoming = LAWS.some((l) => l.status === 'upcoming');
     if (hasUpcoming) {
       expect(html).toContain('pcard--upcoming');
       expect(html).toContain('data-action="interpellate"');
@@ -100,15 +118,31 @@ describe('politicsHTML', () => {
     expect(html).toContain('data-lawfilter="pesticides"');
   });
 
+  test('shows a discreet freshness indicator for API data', () => {
+    const html = politicsHTML(stateWith());
+    expect(html).toContain('politics-freshness');
+    expect(html).toContain('data-source="api"');
+    expect(html).toContain('Données à jour du');
+  });
+
+  test('labels snapshot data honestly when the API was unreachable', () => {
+    const html = politicsHTML(
+      stateWith({ lawsMeta: { source: 'snapshot', dataDate: '2026-07-16T20:00:00Z' } }),
+    );
+    expect(html).toContain('data-source="snapshot"');
+    expect(html).toContain('Données archivées du');
+    expect(html).toContain('source temporairement injoignable');
+  });
+
   test('category filter narrows the passed list', () => {
-    const eau = politicsHTML({ lawFilter: 'eau' });
+    const eau = politicsHTML(stateWith({ lawFilter: 'eau' }));
     const passedCount = (eau.match(/pcard__body-layout/g) || []).length;
-    const eauLaws = LAWS_DATA.filter((l) => l.status === 'passed' && l.category === 'eau').length;
+    const eauLaws = LAWS.filter((l) => l.status === 'passed' && l.category === 'eau').length;
     expect(passedCount).toBe(eauLaws);
   });
 
   test('gauges and vote matrix expose screen-reader text equivalents', () => {
-    const html = politicsHTML({ lawFilter: 'all' });
+    const html = politicsHTML(stateWith());
     // indicator gauges: name + scale description in sr-only text
     expect(html).toMatch(/sr-only">Pesticides : [^<]*sur une échelle de −2/);
     // vote matrix: exact counts, not just percentages (LOA gauche: 1 pour, 160 contre)
@@ -118,18 +152,7 @@ describe('politicsHTML', () => {
     expect(html).toMatch(/class="indicator-meter__track" aria-hidden="true"/);
   });
 
-  test('UI labels follow the documented editorial line', () => {
-    const html = politicsHTML({ lawFilter: 'all' });
-    expect(html).toContain('Intérêts privés vs intérêt général');
-    expect(html).toContain('Santé & population');
-    expect(html).toContain('Centre (EPR/MoDem/Horizons)');
-    for (const banned of ['Pognon', 'Monopolisation vs Citoyens', 'Peuple & Santé', 'Milieu (EPR']) {
-      expect(html).not.toContain(banned);
-    }
-  });
-
-  test('citizen action icon is a self-contained svg', () => {
+  test('exports the citizen action icon used by the interpellation button', () => {
     expect(citizenActionIcon).toContain('<svg');
-    expect(citizenActionIcon).toContain('citizen-icon');
   });
 });

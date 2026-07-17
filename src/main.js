@@ -6,6 +6,8 @@ import { viewLoading, viewError, viewApp, derive, machineContentHTML } from './c
 import { renderChart } from './components/chart.js';
 import { heatmapContainerHTML, preloadFrancePaths } from './components/heatmap.js';
 import { parseHash, writeHash } from './lib/urlstate.js';
+import { loadLaws, getLoadedLaws } from './lib/laws-data.js';
+import { escapeHtml } from './lib/html.js';
 
 const syncUrl = () => writeHash(state);
 let pendingRestore = null;
@@ -170,6 +172,20 @@ function bindApp() {
     contentEl.innerHTML = machineContentHTML(state, d);
   };
 
+  // Onglet Lois : données via l'API (snapshot en secours) — squelette pendant le fetch,
+  // puis re-rendu une fois chargé. loadLaws est mémoïsé : un seul fetch par session.
+  const ensureLawsLoaded = () => {
+    if (state.laws) return;
+    loadLaws().then(({ laws, meta }) => {
+      state.laws = laws;
+      state.lawsMeta = meta;
+      // N'écris que si ce conteneur est toujours dans le DOM (un re-render a pu le
+      // remplacer entre-temps) et qu'on est encore sur l'onglet Lois.
+      if (state.mode === 'politics' && contentEl.isConnected) renderContent();
+    });
+  };
+  if (state.mode === 'politics') ensureLawsLoaded(); // deep-link #politics
+
   // Load only the maps the current view needs. The currentYear map is constant;
   // the selectedYear map is what changes while dragging — so debounce map loads
   // and never fire one per intermediate slider tick.
@@ -265,6 +281,7 @@ function bindApp() {
       state.selectedIso = state.todayIso;
       state.dateSelected = false;
     }
+    if (mode === 'politics') ensureLawsLoaded();
     renderContent();
     refreshMaps();
     syncUrl();
@@ -510,8 +527,8 @@ function revealOnScroll() {
 }
 
 function showInterpellationModal(lawId, triggerEl) {
-  import('./lib/laws.js').then(({ LAWS_DATA, departementLabel, interpellationLetter }) => {
-    const law = LAWS_DATA.find((l) => l.id === lawId);
+  import('./lib/laws.js').then(({ departementLabel, interpellationLetter }) => {
+    const law = getLoadedLaws().find((l) => l.id === lawId);
     if (!law) return;
 
     let cp = '';
@@ -532,7 +549,7 @@ function showInterpellationModal(lawId, triggerEl) {
       <div class="cmodal-content">
         <button class="cmodal__close" data-action="close-modal" aria-label="Fermer">&times;</button>
         <h3 class="cmodal__title" id="cmodal-title">Interpeller votre représentant</h3>
-        <p class="cmodal__desc">Rédigez une interpellation à votre député concernant : <strong>${law.title}</strong>.</p>
+        <p class="cmodal__desc">Rédigez une interpellation à votre député concernant : <strong>${escapeHtml(law.title)}</strong>.</p>
 
         <div class="cmodal__input-group">
           <label class="cmodal__label" for="zipcode-input">1. Saisissez votre code postal</label>
@@ -553,7 +570,7 @@ function showInterpellationModal(lawId, triggerEl) {
 
         <div class="cmodal__input-group">
           <label class="cmodal__label">Aperçu du message</label>
-          <div class="cmodal__letter" data-role="letter">${letter()}</div>
+          <div class="cmodal__letter" data-role="letter"></div>
         </div>
 
         <div class="cmodal__actions">
@@ -565,6 +582,9 @@ function showInterpellationModal(lawId, triggerEl) {
     document.body.appendChild(modal);
 
     const letterEl = modal.querySelector('[data-role="letter"]');
+    // Le corps de la lettre est du texte : injection via textContent (jamais innerHTML),
+    // le titre de loi qu'il contient ne peut donc pas exécuter de HTML.
+    letterEl.textContent = letter();
     const hintEl = modal.querySelector('[data-role="cp-hint"]');
     const sendEl = modal.querySelector('[data-role="send"]');
     const cpInput = modal.querySelector('#zipcode-input');

@@ -1,4 +1,4 @@
-import { LAWS_DATA } from '../lib/laws.js';
+import { escapeHtml, safeUrl } from '../lib/html.js';
 
 export const citizenActionIcon = `
   <svg class="citizen-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -73,11 +73,46 @@ function voteGroupHTML(partyName, votes) {
   `;
 }
 
+/** Squelette dimensionné (pas de layout shift) affiché pendant le fetch API. */
+function loadingSkeletonHTML() {
+  const card = `
+    <article class="pcard pcard--skeleton" aria-hidden="true">
+      <div class="skel skel--badge"></div>
+      <div class="skel skel--title"></div>
+      <div class="skel skel--line"></div>
+      <div class="skel skel--line skel--short"></div>
+      <div class="skel skel--block"></div>
+    </article>
+  `;
+  return `
+    <div class="politics-tab" aria-busy="true">
+      <p class="sr-only" role="status">Chargement des données législatives…</p>
+      <section class="politics-section">
+        <div class="politics-passed-grid">${card}${card}</div>
+      </section>
+    </div>
+  `;
+}
+
+/** Indicateur discret de fraîcheur : provenance + date du jeu de données. */
+function freshnessHTML(meta) {
+  if (!meta) return '';
+  const day = new Date(meta.dataDate).toLocaleDateString('fr-FR');
+  const label =
+    meta.source === 'api'
+      ? `Données à jour du ${day}`
+      : `Données archivées du ${day} — source temporairement injoignable`;
+  return `<p class="politics-freshness" data-source="${meta.source}">${label}</p>`;
+}
+
 export function politicsHTML(state) {
+  const laws = state.laws;
+  if (!laws) return loadingSkeletonHTML();
+
   const activeFilter = state.lawFilter || 'all';
-  
-  const upcoming = LAWS_DATA.filter(l => l.status === 'upcoming');
-  const passed = LAWS_DATA.filter(l => {
+
+  const upcoming = laws.filter(l => l.status === 'upcoming');
+  const passed = laws.filter(l => {
     if (l.status !== 'passed') return false;
     if (activeFilter === 'all') return true;
     return l.category === activeFilter;
@@ -93,9 +128,9 @@ export function politicsHTML(state) {
   const upcomingCards = upcoming.map(law => `
     <article class="pcard pcard--upcoming">
       <div class="pcard__badge">Vote à venir · ${new Date(law.date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
-      <h4 class="pcard__title">${law.title}</h4>
-      <p class="pcard__summary">${law.summary}</p>
-      
+      <h4 class="pcard__title">${escapeHtml(law.title)}</h4>
+      <p class="pcard__summary">${escapeHtml(law.summary)}</p>
+
       <div class="pcard__indicators-grid">
         ${indicatorMeterHTML('Impact pesticides', law.indicators.pesticides)}
         ${indicatorMeterHTML('Partage de l\'eau', law.indicators.partageEau)}
@@ -104,8 +139,8 @@ export function politicsHTML(state) {
       </div>
 
       <div class="pcard__actions">
-        <a href="${law.textUrl}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
-        <button class="btn btn--citoyen btn--sm" data-action="interpellate" data-law-id="${law.id}">
+        <a href="${escapeHtml(safeUrl(law.textUrl))}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
+        <button class="btn btn--citoyen btn--sm" data-action="interpellate" data-law-id="${escapeHtml(law.id)}">
           ${citizenActionIcon}
           <span>Interpeller mon député</span>
         </button>
@@ -116,11 +151,11 @@ export function politicsHTML(state) {
   const passedCards = passed.map(law => `
     <article class="pcard">
       <div class="pcard__meta">
-        <span class="pcard__cat">${categoryLabel(law.category)}</span>
+        <span class="pcard__cat">${escapeHtml(categoryLabel(law.category))}</span>
         <span class="pcard__date">Voté le ${new Date(law.date).toLocaleDateString('fr-FR')}</span>
       </div>
-      <h4 class="pcard__title">${law.title}</h4>
-      <p class="pcard__summary">${law.summary}</p>
+      <h4 class="pcard__title">${escapeHtml(law.title)}</h4>
+      <p class="pcard__summary">${escapeHtml(law.summary)}</p>
       
       <div class="pcard__body-layout">
         <div class="pcard__section">
@@ -138,22 +173,23 @@ export function politicsHTML(state) {
             <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--against"></span> Contre (C)</span>
             <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--abstained"></span> Abstention</span>
           </div>
-          ${voteGroupHTML('Gauche (NFP/LFI/PS/EELV)', law.votes.gauche)}
-          ${voteGroupHTML('Centre (EPR/MoDem/Horizons)', law.votes.milieu)}
-          ${voteGroupHTML('Droite (DR/LR)', law.votes.droite)}
-          ${voteGroupHTML('Extrême Droite (RN/UDR)', law.votes.extremeDroite)}
+          ${voteGroupHTML('Gauche (NFP/LFI/PS/EELV)', law.votes?.gauche)}
+          ${voteGroupHTML('Centre (EPR/MoDem/Horizons)', law.votes?.milieu)}
+          ${voteGroupHTML('Droite (DR/LR)', law.votes?.droite)}
+          ${voteGroupHTML('Extrême Droite (RN/UDR)', law.votes?.extremeDroite)}
         </div>
       </div>
 
       <div class="pcard__actions">
-        <a href="${law.textUrl}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
-        <a href="${law.sourceUrl}" target="_blank" rel="noopener" class="pcard__link">Scrutin officiel ↗</a>
+        <a href="${escapeHtml(safeUrl(law.textUrl))}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
+        <a href="${escapeHtml(safeUrl(law.sourceUrl))}" target="_blank" rel="noopener" class="pcard__link">Scrutin officiel ↗</a>
       </div>
     </article>
   `).join('');
 
   return `
     <div class="politics-tab">
+      ${freshnessHTML(state.lawsMeta)}
       <section class="politics-section">
         <div class="politics-section__header">
           <h3 class="politics-section__title">📜 Mobilisation & Prochains Scrutins</h3>
