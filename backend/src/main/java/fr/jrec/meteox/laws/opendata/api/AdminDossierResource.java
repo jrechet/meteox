@@ -15,6 +15,7 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import java.util.Optional;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
+import org.eclipse.microprofile.context.ManagedExecutor;
 
 /**
  * Validation humaine des candidats « prochains scrutins » (issue #3, tâche 2). Protégé par le
@@ -27,6 +28,7 @@ public class AdminDossierResource {
 
   @Inject DossierSyncService service;
   @Inject DossierRepository repository;
+  @Inject ManagedExecutor executor;
 
   @ConfigProperty(name = "meteox.admin.token")
   Optional<String> adminToken;
@@ -39,12 +41,19 @@ public class AdminDossierResource {
     return Response.ok(repository.listByStatus("candidate")).build();
   }
 
-  /** Déclenche une passe de détection à la demande (sinon quotidienne). */
+  /**
+   * Déclenche une passe de détection en ARRIÈRE-PLAN (le téléchargement + parcours de ~3000
+   * dossiers prend 1-2 min) et rend la main immédiatement — sinon la requête HTTP expirerait.
+   */
   @POST
   @Path("/sync")
   public Response sync(@HeaderParam("X-Admin-Token") String token) {
     requireAdmin(token);
-    return Response.ok(service.syncAll()).build();
+    if (service.isRunning()) {
+      return Response.ok(new SyncStatus("running")).build();
+    }
+    executor.runAsync(service::syncAll);
+    return Response.status(Response.Status.ACCEPTED).entity(new SyncStatus("started")).build();
   }
 
   /** Publie un candidat en carte « à venir », avec les champs éditoriaux fournis par l'humain. */
@@ -100,6 +109,8 @@ public class AdminDossierResource {
         a.getBytes(java.nio.charset.StandardCharsets.UTF_8),
         b.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
+
+  record SyncStatus(String status) {}
 
   record PromoteRequest(String category, String date, String summary, String sourceExpect) {}
 

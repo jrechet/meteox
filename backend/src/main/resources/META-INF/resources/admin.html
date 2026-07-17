@@ -284,11 +284,13 @@
 
       async function sync() {
         if (!token()) return setStatus('Saisis le jeton admin.', 'err');
-        setStatus('Synchronisation depuis l\'open data (peut prendre ~1 min)…');
         try {
           const r = await api('/sync', { method: 'POST' });
-          setStatus(`Sync OK — ${r.scanned} scanné(s), ${r.candidates} candidat(s), ${r.demoted} dépublié(s). Rechargement…`, 'ok');
-          await load();
+          if (r && r.status === 'running') {
+            setStatus('Une synchronisation est déjà en cours. Recharge les candidats dans ~1 min.', 'ok');
+          } else {
+            setStatus('Synchronisation lancée en arrière-plan (~1-2 min). Clique « Charger les candidats » ensuite pour voir le résultat.', 'ok');
+          }
         } catch (e) {
           setStatus(e.message, 'err');
         }
