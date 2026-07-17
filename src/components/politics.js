@@ -73,6 +73,68 @@ function voteGroupHTML(partyName, votes) {
   `;
 }
 
+const INDICATOR_LABELS = {
+  pesticides: 'Pesticides',
+  partageEau: "Partage de l'eau",
+  pognonPuissants: 'Intérêts privés vs intérêt général',
+  peupleSante: 'Santé & population',
+};
+
+const CONFIDENCE_LABELS = { haute: 'confiance haute', moyenne: 'confiance moyenne', basse: 'confiance basse' };
+
+/**
+ * Dépliant « Pourquoi ces scores ? » (issue #4) : justification citée, confiance et
+ * provenance de chaque score publié + lien vers la méthodologie. Contenu chargé au
+ * premier dépliage (data-law-id consommé par main.js).
+ */
+function indicatorsWhyHTML(lawId) {
+  return `
+    <details class="indicators-why" data-law-id="${escapeHtml(lawId)}">
+      <summary class="indicators-why__summary">Pourquoi ces scores ?</summary>
+      <div class="indicators-why__body" data-role="why-body" aria-live="polite">
+        <p class="indicators-why__loading">Chargement de la justification…</p>
+      </div>
+    </details>
+  `;
+}
+
+/** Rendu du détail des indicateurs (appelé par main.js une fois la réponse API reçue). */
+export function indicatorsWhyBodyHTML(payload) {
+  const methodologyLink = `<a href="${escapeHtml((payload && payload.methodology) || '')}" target="_blank" rel="noopener" class="pcard__link">Méthodologie complète ↗</a>`;
+  if (!payload) {
+    return `
+      <p class="indicators-why__fallback">Justifications indisponibles pour le moment (source injoignable).
+      Chaque score est documenté publiquement :</p>
+      <a href="https://github.com/jrechet/meteox/blob/main/docs/methodologie-indicateurs.md" target="_blank" rel="noopener" class="pcard__link">Méthodologie complète ↗</a>
+    `;
+  }
+  const rows = payload.indicators
+    .map((row) => {
+      const label = INDICATOR_LABELS[row.indicator] || row.indicator;
+      const provenance = row.model
+        ? `Extraction assistée (<code>${escapeHtml(row.model)}</code>), relue et validée${row.reviewedBy ? ` par ${escapeHtml(row.reviewedBy)}` : ''}`
+        : 'Score éditorial vérifié (relecture humaine)';
+      const confidence = row.confidence
+        ? ` · <span class="indicators-why__confidence">${escapeHtml(CONFIDENCE_LABELS[row.confidence] || row.confidence)}</span>`
+        : '';
+      const justification = row.justification
+        ? `<p class="indicators-why__text">${escapeHtml(row.justification)}</p>`
+        : '';
+      const citation = row.citation
+        ? `<blockquote class="indicators-why__citation">« ${escapeHtml(row.citation)} »</blockquote>`
+        : '';
+      return `
+        <div class="indicators-why__row">
+          <p class="indicators-why__head"><strong>${escapeHtml(label)}</strong> · ${provenance}${confidence}</p>
+          ${justification}
+          ${citation}
+        </div>
+      `;
+    })
+    .join('');
+  return `${rows}${methodologyLink}`;
+}
+
 /** Squelette dimensionné (pas de layout shift) affiché pendant le fetch API. */
 function loadingSkeletonHTML() {
   const card = `
@@ -164,6 +226,7 @@ export function politicsHTML(state) {
           ${indicatorMeterHTML('Partage de l\'eau', law.indicators.partageEau)}
           ${indicatorMeterHTML('Intérêts privés vs intérêt général', law.indicators.pognonPuissants)}
           ${indicatorMeterHTML('Santé & population', law.indicators.peupleSante)}
+          ${indicatorsWhyHTML(law.id)}
         </div>
         
         <div class="pcard__section">
