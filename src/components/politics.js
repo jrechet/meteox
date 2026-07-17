@@ -53,22 +53,29 @@ function indicatorMeterHTML(name, val) {
 function voteGroupHTML(partyName, votes) {
   if (!votes) return '';
   const total = votes.for + votes.against + votes.abstained || 1;
-  const pctFor = Math.round((votes.for / total) * 100);
-  const pctAgainst = Math.round((votes.against / total) * 100);
-  const pctAbstained = Math.round((votes.abstained / total) * 100);
+  const pct = (n) => Math.round((n / total) * 100);
+  const plural = (n) => (n > 1 ? 's' : '');
+  // Compte réel de voix (donnée officielle) + % en info-bulle. Les trois valeurs sont
+  // toujours affichées : un groupe 100 % abstention se lit « 0 P · 0 C · 4 A », pas un vide.
+  const num = (n, cls, letter, label) =>
+    `<b class="vote-num vote-num--${cls}" title="${label} : ${n} (${pct(n)} %)">${n} ${letter}</b>`;
 
   return `
     <div class="vote-group">
-      <span class="sr-only">${partyName} : ${votes.for} pour, ${votes.against} contre, ${votes.abstained} abstention${votes.abstained > 1 ? 's' : ''}.</span>
-      <span class="vote-group__name" aria-hidden="true" title="${partyName}">${partyName}</span>
-      <div class="vote-group__bar" aria-hidden="true">
-        <div class="vote-group__segment vote-group__segment--for" style="width: ${pctFor}%" title="Pour: ${pctFor}%"></div>
-        <div class="vote-group__segment vote-group__segment--against" style="width: ${pctAgainst}%" title="Contre: ${pctAgainst}%"></div>
-        <div class="vote-group__segment vote-group__segment--abstained" style="width: ${pctAbstained}%" title="Abstention: ${pctAbstained}%"></div>
+      <span class="sr-only">${partyName} : ${votes.for} pour, ${votes.against} contre, ${votes.abstained} abstention${plural(votes.abstained)}.</span>
+      <span class="vote-group__name" aria-hidden="true">${partyName}</span>
+      <div class="vote-group__row" aria-hidden="true">
+        <div class="vote-group__bar">
+          <div class="vote-group__segment vote-group__segment--for" style="width: ${pct(votes.for)}%"></div>
+          <div class="vote-group__segment vote-group__segment--against" style="width: ${pct(votes.against)}%"></div>
+          <div class="vote-group__segment vote-group__segment--abstained" style="width: ${pct(votes.abstained)}%"></div>
+        </div>
+        <span class="vote-group__numbers">
+          ${num(votes.for, 'for', 'P', 'Pour')}
+          ${num(votes.against, 'against', 'C', 'Contre')}
+          ${num(votes.abstained, 'abstained', 'A', 'Abstention')}
+        </span>
       </div>
-      <span class="vote-group__numbers" aria-hidden="true">
-        <span class="vote-num vote-num--for">${pctFor}% P</span> / <span class="vote-num vote-num--against">${pctAgainst}% C</span>
-      </span>
     </div>
   `;
 }

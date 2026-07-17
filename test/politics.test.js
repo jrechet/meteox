@@ -147,9 +147,20 @@ describe('politicsHTML', () => {
     expect(html).toMatch(/sr-only">Pesticides : [^<]*sur une échelle de −2/);
     // vote matrix: exact counts, not just percentages (LOA gauche: 1 pour, 160 contre)
     expect(html).toContain('Gauche (NFP/LFI/PS/EELV) : 1 pour, 160 contre, 0 abstention.');
-    // decorative visuals hidden from AT
-    expect(html).toMatch(/class="vote-group__bar" aria-hidden="true"/);
+    // decorative visuals hidden from AT (the bar+numbers row carries aria-hidden)
+    expect(html).toMatch(/class="vote-group__row" aria-hidden="true"/);
     expect(html).toMatch(/class="indicator-meter__track" aria-hidden="true"/);
+  });
+
+  test('vote counts show all three tallies incl. abstention (no hidden 0%/0% groups)', () => {
+    const html = politicsHTML(stateWith());
+    // Les trois comptes (P/C/A) sont rendus, abstention comprise — un groupe 100 %
+    // abstention n'est plus un « 0% P / 0% C » muet.
+    expect(html).toContain('vote-num--abstained');
+    // PFAS Droite = 0 pour / 0 contre / 4 abstentions : la valeur 4 doit apparaître.
+    expect(html).toMatch(/vote-num--abstained[^>]*>4 A</);
+    // Le compte de « pour » de la gauche PFAS (98) est affiché tel quel.
+    expect(html).toMatch(/vote-num--for[^>]*>98 P</);
   });
 
   test('exports the citizen action icon used by the interpellation button', () => {
