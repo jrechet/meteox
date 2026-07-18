@@ -1,0 +1,24 @@
+{
+  "acteur": {
+    "uid": {
+      "#text": "PA841295"
+    },
+    "etatCivil": {
+      "ident": {
+        "prenom": "Pierrick",
+        "nom": "Courbon"
+      }
+    },
+    "mandats": {
+      "mandat": [
+        {
+          "typeOrgane": "GP",
+          "dateFin": null,
+          "organes": {
+            "organeRef": "PO845419"
+          }
+        }
+      ]
+    }
+  }
+}

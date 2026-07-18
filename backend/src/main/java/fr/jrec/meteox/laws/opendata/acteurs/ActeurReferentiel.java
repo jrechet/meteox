@@ -38,15 +38,28 @@ public class ActeurReferentiel {
   /** Rattachement d'un acteur à un groupe politique. {@code bloc} nul si l'organe n'est pas mappé. */
   public record GroupeAffiliation(String sigle, String organeRef, String bloc) {}
 
-  /** Index immuable : acteurRef → nom (« Prénom Nom ») et acteurRef → affiliation de groupe. */
+  /**
+   * Index immuable : acteurRef → nom (« Prénom Nom »), acteurRef → affiliation de groupe, et
+   * organeRef (d'un groupe politique) → affiliation (pour les textes déposés par un groupe).
+   */
   private record Index(
       Map<String, String> nomByActeur,
       Map<String, GroupeAffiliation> groupeByActeur,
+      Map<String, GroupeAffiliation> groupeByOrgane,
       Instant builtAt) {}
 
   /** Groupe politique actif d'un acteur, ou vide s'il n'a pas de mandat GP actif (ou inconnu). */
   public Optional<GroupeAffiliation> groupeDe(String acteurRef) {
     return Optional.ofNullable(index().groupeByActeur().get(acteurRef));
+  }
+
+  /**
+   * Affiliation d'un {@code organeRef} de groupe politique (texte déposé par un GROUPE, pas une
+   * personne) → sigle + bloc. Vide si l'organeRef n'est pas un groupe politique connu (ex.
+   * l'Assemblée elle-même, une commission) — ce n'est pas une erreur.
+   */
+  public Optional<GroupeAffiliation> groupeDeOrgane(String organeRef) {
+    return Optional.ofNullable(index().groupeByOrgane().get(organeRef));
   }
 
   /** Nom (« Prénom Nom ») d'un acteur connu, ou vide si l'acteurRef est inconnu du référentiel. */
@@ -106,16 +119,29 @@ public class ActeurReferentiel {
       throw new IllegalStateException("Interruption pendant le chargement du référentiel acteurs", e);
     }
 
+    // Affiliation d'un groupe politique (par son organeRef) : sigle de l'organe + bloc du mapping.
+    Map<String, GroupeAffiliation> groupeByOrgane = new HashMap<>();
+    for (Map.Entry<String, String> e : sigleByOrgane.entrySet()) {
+      String organeRef = e.getKey();
+      groupeByOrgane.put(
+          organeRef,
+          new GroupeAffiliation(e.getValue(), organeRef, blocMapping.blocFor(organeRef).orElse(null)));
+    }
+
     Map<String, GroupeAffiliation> groupeByActeur = new HashMap<>();
     for (Map.Entry<String, String> e : groupeRefByActeur.entrySet()) {
       String organeRef = e.getValue();
-      String sigle = sigleByOrgane.get(organeRef);
-      String bloc = blocMapping.blocFor(organeRef).orElse(null);
-      groupeByActeur.put(e.getKey(), new GroupeAffiliation(sigle, organeRef, bloc));
+      GroupeAffiliation affiliation = groupeByOrgane.get(organeRef);
+      groupeByActeur.put(
+          e.getKey(),
+          affiliation != null
+              ? affiliation
+              : new GroupeAffiliation(null, organeRef, blocMapping.blocFor(organeRef).orElse(null)));
     }
     LOG.infof(
         "Référentiel acteurs construit : %d acteurs, %d avec groupe actif, %d groupes",
         nomByActeur.size(), groupeByActeur.size(), sigleByOrgane.size());
-    return new Index(Map.copyOf(nomByActeur), Map.copyOf(groupeByActeur), Instant.now());
+    return new Index(
+        Map.copyOf(nomByActeur), Map.copyOf(groupeByActeur), Map.copyOf(groupeByOrgane), Instant.now());
   }
 }

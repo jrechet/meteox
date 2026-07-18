@@ -1,0 +1,24 @@
+{
+  "acteur": {
+    "uid": {
+      "#text": "PA794082"
+    },
+    "etatCivil": {
+      "ident": {
+        "prenom": "Mathilde",
+        "nom": "Hignet"
+      }
+    },
+    "mandats": {
+      "mandat": [
+        {
+          "typeOrgane": "GP",
+          "dateFin": null,
+          "organes": {
+            "organeRef": "PO845413"
+          }
+        }
+      ]
+    }
+  }
+}
