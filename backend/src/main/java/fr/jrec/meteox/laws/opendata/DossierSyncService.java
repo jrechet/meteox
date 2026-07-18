@@ -54,7 +54,8 @@ public class DossierSyncService {
       LOG.info("sync-dossiers : une passe est déjà en cours, celle-ci est ignorée");
       return new SyncReport(0, 0, 0);
     }
-    var stats = new int[3]; // [scanned, candidates, demoted]
+    var stats = new int[4]; // [scanned, candidates, demoted, removed]
+    var seen = new java.util.HashSet<String>();
     try {
       openData.forEachDossier(
           legislature,
@@ -65,13 +66,24 @@ public class DossierSyncService {
             if (d.promulgated() && demoteIfPromoted(d)) {
               stats[2]++;
             }
+            // On ne garde que les projets/propositions de LOI (pas les résolutions, rapports,
+            // pétitions… qui ne sont pas des textes de loi et n'ont rien à faire en « à venir »).
+            if (!isLaw(d.procedure())) {
+              return;
+            }
             Optional<String> theme = matchTheme(d.titre());
             if (theme.isEmpty()) {
               return;
             }
             stats[1]++;
-            candidates.upsert(d.uid(), d.legislature(), d.titre(), d.url(), theme.get(), d.promulgated());
+            seen.add(d.uid());
+            candidates.upsert(
+                d.uid(), d.legislature(), d.titre(), d.url(), theme.get(), d.promulgated(),
+                d.procedure(), isProjetDeLoi(d.procedure()));
           });
+      // Réconciliation (seulement après un scan RÉUSSI, pour ne jamais vider la liste sur une
+      // panne réseau) : retire les candidats non actionnés qui ne matchent plus.
+      stats[3] = candidates.deleteUnactionedNotIn(seen);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOG.error("Synchronisation des dossiers interrompue");
@@ -81,8 +93,8 @@ public class DossierSyncService {
       running.set(false);
     }
     LOG.infof(
-        "sync-dossiers : %d dossier(s) scanné(s), %d candidat(s) thématique(s), %d dépublié(s)",
-        stats[0], stats[1], stats[2]);
+        "sync-dossiers : %d scanné(s), %d candidat(s), %d dépublié(s), %d retiré(s)",
+        stats[0], stats[1], stats[2], stats[3]);
     return new SyncReport(stats[0], stats[1], stats[2]);
   }
 
@@ -126,6 +138,16 @@ public class DossierSyncService {
     candidates.markTerminated(d.uid());
     LOG.warnf("Dossier %s promulgué : carte upcoming %s dépubliée", d.uid(), lawId.get());
     return true;
+  }
+
+  /** Vrai si la procédure est un projet OU une proposition de LOI (et non une résolution/rapport). */
+  static boolean isLaw(String procedure) {
+    return normalize(procedure).contains("loi");
+  }
+
+  /** Vrai si c'est un PROJET de loi (origine gouvernementale) — pas une proposition parlementaire. */
+  static boolean isProjetDeLoi(String procedure) {
+    return normalize(procedure).startsWith("projet de loi");
   }
 
   /** Premier mot-clé thématique présent dans le titre (comparaison sans accents), s'il y en a un. */
