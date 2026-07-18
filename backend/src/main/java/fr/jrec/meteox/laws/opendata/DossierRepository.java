@@ -24,18 +24,28 @@ public class DossierRepository {
       String titre,
       String dossierUrl,
       String theme,
+      String procedure,
+      boolean projetDeLoi,
       boolean terminated,
       String status,
       String promotedLawId) {}
 
-  /** Insère le candidat ou rafraîchit son titre/état de terminaison + last_seen. */
+  /** Insère le candidat ou rafraîchit son titre/procédure/état + last_seen. */
   public void upsert(
-      String uid, int legislature, String titre, String dossierUrl, String theme, boolean terminated) {
+      String uid,
+      int legislature,
+      String titre,
+      String dossierUrl,
+      String theme,
+      boolean terminated,
+      String procedure,
+      boolean projetDeLoi) {
     execute(
-        "INSERT INTO dossier_candidates (uid, legislature, titre, dossier_url, theme, terminated)"
-            + " VALUES (?, ?, ?, ?, ?, ?)"
+        "INSERT INTO dossier_candidates (uid, legislature, titre, dossier_url, theme, terminated,"
+            + " procedure, projet_de_loi) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             + " ON CONFLICT(uid) DO UPDATE SET titre = excluded.titre,"
-            + " terminated = excluded.terminated, last_seen = datetime('now')",
+            + " terminated = excluded.terminated, procedure = excluded.procedure,"
+            + " projet_de_loi = excluded.projet_de_loi, last_seen = datetime('now')",
         ps -> {
           ps.setString(1, uid);
           ps.setInt(2, legislature);
@@ -43,6 +53,8 @@ public class DossierRepository {
           ps.setString(4, dossierUrl);
           ps.setString(5, theme);
           ps.setInt(6, terminated ? 1 : 0);
+          ps.setString(7, procedure);
+          ps.setInt(8, projetDeLoi ? 1 : 0);
         });
   }
 
@@ -66,22 +78,14 @@ public class DossierRepository {
     try (Connection c = dataSource.getConnection();
         PreparedStatement ps =
             c.prepareStatement(
-                "SELECT uid, legislature, titre, dossier_url, theme, terminated, status,"
-                    + " promoted_law_id FROM dossier_candidates WHERE status = ? AND terminated = 0"
-                    + " ORDER BY last_seen DESC")) {
+                "SELECT uid, legislature, titre, dossier_url, theme, procedure, projet_de_loi,"
+                    + " terminated, status, promoted_law_id FROM dossier_candidates"
+                    + " WHERE status = ? AND terminated = 0"
+                    + " ORDER BY projet_de_loi DESC, last_seen DESC")) {
       ps.setString(1, status);
       try (ResultSet rs = ps.executeQuery()) {
         while (rs.next()) {
-          out.add(
-              new Candidate(
-                  rs.getString("uid"),
-                  rs.getInt("legislature"),
-                  rs.getString("titre"),
-                  rs.getString("dossier_url"),
-                  rs.getString("theme"),
-                  rs.getInt("terminated") == 1,
-                  rs.getString("status"),
-                  rs.getString("promoted_law_id")));
+          out.add(mapCandidate(rs));
         }
       }
     } catch (SQLException e) {
@@ -119,27 +123,29 @@ public class DossierRepository {
     try (Connection c = dataSource.getConnection();
         PreparedStatement ps =
             c.prepareStatement(
-                "SELECT uid, legislature, titre, dossier_url, theme, terminated, status,"
-                    + " promoted_law_id FROM dossier_candidates WHERE uid = ?")) {
+                "SELECT uid, legislature, titre, dossier_url, theme, procedure, projet_de_loi,"
+                    + " terminated, status, promoted_law_id FROM dossier_candidates WHERE uid = ?")) {
       ps.setString(1, uid);
       try (ResultSet rs = ps.executeQuery()) {
-        if (!rs.next()) {
-          return Optional.empty();
-        }
-        return Optional.of(
-            new Candidate(
-                rs.getString("uid"),
-                rs.getInt("legislature"),
-                rs.getString("titre"),
-                rs.getString("dossier_url"),
-                rs.getString("theme"),
-                rs.getInt("terminated") == 1,
-                rs.getString("status"),
-                rs.getString("promoted_law_id")));
+        return rs.next() ? Optional.of(mapCandidate(rs)) : Optional.empty();
       }
     } catch (SQLException e) {
       throw new IllegalStateException("Lecture du candidat impossible : " + uid, e);
     }
+  }
+
+  private static Candidate mapCandidate(ResultSet rs) throws SQLException {
+    return new Candidate(
+        rs.getString("uid"),
+        rs.getInt("legislature"),
+        rs.getString("titre"),
+        rs.getString("dossier_url"),
+        rs.getString("theme"),
+        rs.getString("procedure"),
+        rs.getInt("projet_de_loi") == 1,
+        rs.getInt("terminated") == 1,
+        rs.getString("status"),
+        rs.getString("promoted_law_id"));
   }
 
   private void execute(String sql, SqlBinder binder) {

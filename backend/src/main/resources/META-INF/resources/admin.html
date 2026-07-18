@@ -89,6 +89,17 @@
         padding: 0.05rem 0.5rem;
       }
       .cand__uid { color: var(--ink-faint); font-size: 0.78rem; font-family: ui-monospace, monospace; }
+      .cand__sub { color: var(--ink-soft); font-size: 0.8rem; margin-top: 0.15rem; }
+      .badge-gov {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: oklch(45% 0.13 145);
+        border: 1px solid color-mix(in oklch, oklch(45% 0.13 145) 45%, var(--line));
+        border-radius: 99px;
+        padding: 0.05rem 0.5rem;
+      }
+      .chk { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; }
+      .chk input { width: auto; }
       .cand__actions { margin-top: 0.55rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
       .promote-form { margin-top: 0.7rem; padding: 0.8rem; border: 1px dashed var(--line-strong); border-radius: 8px; }
       .promote-form.hidden { display: none; }
@@ -132,6 +143,7 @@
           <label for="f-search">Recherche (titre)</label>
           <input id="f-search" type="search" placeholder="ex. eau, pesticides, souveraineté…" />
         </div>
+        <label class="chk"><input id="f-gov" type="checkbox" /> Projets de loi uniquement</label>
         <span class="count" id="count"></span>
       </div>
 
@@ -143,10 +155,11 @@
     <template id="cand-tpl">
       <div class="cand">
         <div class="cand__head">
+          <span class="badge-gov" data-gov hidden>★ Projet de loi · gouvernement</span>
           <span class="tag" data-theme></span>
           <span class="cand__title" data-title></span>
-          <span class="cand__uid" data-uid></span>
         </div>
+        <div class="cand__sub"><span data-procedure></span> · <span class="cand__uid" data-uid></span></div>
         <div><a data-link target="_blank" rel="noopener">Dossier officiel ↗</a></div>
         <div class="cand__actions">
           <button class="small" data-act="open-promote">Promouvoir</button>
@@ -225,8 +238,12 @@
       function render() {
         const theme = $('#f-theme').value;
         const q = $('#f-search').value.trim().toLowerCase();
+        const govOnly = $('#f-gov').checked;
         const shown = candidates.filter(
-          (c) => (!theme || c.theme === theme) && (!q || c.titre.toLowerCase().includes(q)),
+          (c) =>
+            (!theme || c.theme === theme) &&
+            (!q || c.titre.toLowerCase().includes(q)) &&
+            (!govOnly || c.projetDeLoi),
         );
         const list = $('#list');
         list.textContent = '';
@@ -248,6 +265,8 @@
         $('[data-theme]', node).textContent = c.theme;
         $('[data-title]', node).textContent = c.titre;
         $('[data-uid]', node).textContent = c.uid;
+        $('[data-procedure]', node).textContent = c.procedure || '—';
+        if (c.projetDeLoi) $('[data-gov]', node).hidden = false;
         $('[data-link]', node).href = c.dossierUrl;
         const form = $('[data-form]', node);
         // Défaut raisonnable pour le fragment vérifié : un extrait distinctif du titre.
@@ -328,6 +347,7 @@
       $('#sync').addEventListener('click', sync);
       $('#f-theme').addEventListener('change', render);
       $('#f-search').addEventListener('input', render);
+      $('#f-gov').addEventListener('change', render);
       const saved = sessionStorage.getItem('mx_admin_token');
       if (saved) { $('#token').value = saved; load(); }
     </script>

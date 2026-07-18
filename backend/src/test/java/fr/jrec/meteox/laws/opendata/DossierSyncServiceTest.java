@@ -112,6 +112,32 @@ class DossierSyncServiceTest {
   }
 
   @Test
+  void keeps_only_law_projects_flags_government_and_excludes_resolutions() throws Exception {
+    // 54085 = Projet de loi (agri, gouvernemental) ; 53637 = Projet ou proposition de loi
+    // constitutionnelle (eau) ; 54623 = Résolution 34-1 (canicule) → exclue bien que thématique.
+    stubDataset(17, zipOf("DLR5L17N54085", "DLR5L17N53637", "DLR5L17N54623"));
+
+    service.syncAll();
+
+    var staged = candidates.listByStatus("candidate");
+    var uids = staged.stream().map(DossierRepository.Candidate::uid).toList();
+    assertTrue(uids.contains("DLR5L17N54085"));
+    assertTrue(uids.contains("DLR5L17N53637"));
+    assertFalse(
+        uids.contains("DLR5L17N54623"), "une résolution thématique reste exclue (pas une loi)");
+
+    var projet =
+        staged.stream().filter(c -> c.uid().equals("DLR5L17N54085")).findFirst().orElseThrow();
+    assertTrue(projet.projetDeLoi(), "un projet de loi est marqué gouvernemental");
+    assertEquals("Projet de loi ordinaire", projet.procedure());
+    var constit =
+        staged.stream().filter(c -> c.uid().equals("DLR5L17N53637")).findFirst().orElseThrow();
+    assertFalse(constit.projetDeLoi(), "une loi constitutionnelle n'est pas un 'projet de loi'");
+    // Tri : les projets de loi (gouvernement) remontent en tête de liste.
+    assertEquals("DLR5L17N54085", staged.get(0).uid());
+  }
+
+  @Test
   void promulgated_dossier_demotes_a_promoted_upcoming_card() throws Exception {
     // Une carte upcoming a été promue depuis le dossier PROMULGUEE (avant sa promulgation).
     insertUpcomingLaw("test-upcoming", "https://www.assemblee-nationale.fr/dyn/17/dossiers/" + PROMULGUEE);
@@ -173,7 +199,9 @@ class DossierSyncServiceTest {
   @Test
   void promotion_refuses_a_terminated_dossier() {
     // Candidat présent mais dossier promulgué (terminated) : impossible à promouvoir en « à venir ».
-    candidates.upsert(PROMULGUEE, 17, "Dossier clos", "https://x/dossiers/" + PROMULGUEE, "eau", true);
+    candidates.upsert(
+        PROMULGUEE, 17, "Dossier clos", "https://x/dossiers/" + PROMULGUEE, "eau", true,
+        "Proposition de loi ordinaire", false);
     org.junit.jupiter.api.Assertions.assertThrows(
         IllegalStateException.class,
         () -> service.promote(PROMULGUEE, "agriculture", "2026-09-01", "x", "x"));

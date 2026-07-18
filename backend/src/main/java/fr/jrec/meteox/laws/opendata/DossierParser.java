@@ -18,7 +18,12 @@ public class DossierParser {
 
   /** Dossier parsé (données brutes, avant filtrage thématique). */
   public record ParsedDossier(
-      String uid, int legislature, String titre, String titreChemin, boolean promulgated) {
+      String uid,
+      int legislature,
+      String titre,
+      String titreChemin,
+      String procedure,
+      boolean promulgated) {
 
     /** URL officielle publique et stable du dossier (l'uid résout ; le slug non). */
     public String url() {
@@ -37,10 +42,12 @@ public class DossierParser {
       JsonNode titreNode = d.path("titreDossier");
       String titre = titreNode.path("titre").asText();
       String chemin = titreNode.path("titreChemin").asText(null);
+      String procedure = d.path("procedureParlementaire").path("libelle").asText("");
       if (uid.isBlank() || titre.isBlank()) {
         throw new IllegalArgumentException("Dossier sans uid ou titre exploitable");
       }
-      return new ParsedDossier(uid, legislature, titre, chemin, hasPromulgation(d.path("actesLegislatifs")));
+      return new ParsedDossier(
+          uid, legislature, titre, chemin, procedure, hasPromulgation(d.path("actesLegislatifs")));
     } catch (IllegalArgumentException e) {
       throw e;
     } catch (Exception e) {

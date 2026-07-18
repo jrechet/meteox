@@ -65,12 +65,19 @@ public class DossierSyncService {
             if (d.promulgated() && demoteIfPromoted(d)) {
               stats[2]++;
             }
+            // On ne garde que les projets/propositions de LOI (pas les résolutions, rapports,
+            // pétitions… qui ne sont pas des textes de loi et n'ont rien à faire en « à venir »).
+            if (!isLaw(d.procedure())) {
+              return;
+            }
             Optional<String> theme = matchTheme(d.titre());
             if (theme.isEmpty()) {
               return;
             }
             stats[1]++;
-            candidates.upsert(d.uid(), d.legislature(), d.titre(), d.url(), theme.get(), d.promulgated());
+            candidates.upsert(
+                d.uid(), d.legislature(), d.titre(), d.url(), theme.get(), d.promulgated(),
+                d.procedure(), isProjetDeLoi(d.procedure()));
           });
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
@@ -126,6 +133,16 @@ public class DossierSyncService {
     candidates.markTerminated(d.uid());
     LOG.warnf("Dossier %s promulgué : carte upcoming %s dépubliée", d.uid(), lawId.get());
     return true;
+  }
+
+  /** Vrai si la procédure est un projet OU une proposition de LOI (et non une résolution/rapport). */
+  static boolean isLaw(String procedure) {
+    return normalize(procedure).contains("loi");
+  }
+
+  /** Vrai si c'est un PROJET de loi (origine gouvernementale) — pas une proposition parlementaire. */
+  static boolean isProjetDeLoi(String procedure) {
+    return normalize(procedure).startsWith("projet de loi");
   }
 
   /** Premier mot-clé thématique présent dans le titre (comparaison sans accents), s'il y en a un. */
