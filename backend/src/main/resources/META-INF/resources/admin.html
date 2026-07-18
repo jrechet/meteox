@@ -90,6 +90,22 @@
       }
       .cand__uid { color: var(--ink-faint); font-size: 0.78rem; font-family: ui-monospace, monospace; }
       .cand__sub { color: var(--ink-soft); font-size: 0.8rem; margin-top: 0.15rem; }
+      .cand__author { font-size: 0.82rem; color: var(--ink-soft); margin-top: 0.35rem; }
+      .cand__author strong { color: var(--ink); font-weight: 600; }
+      .cand__cosign { margin-top: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.3rem; align-items: center; }
+      .cosign-count { font-size: 0.8rem; font-weight: 700; color: var(--ink); margin-right: 0.15rem; }
+      .grp {
+        font-size: 0.72rem;
+        border-radius: 99px;
+        padding: 0.04rem 0.45rem;
+        border: 1px solid var(--line-strong);
+        color: var(--ink-soft);
+        white-space: nowrap;
+      }
+      .grp[data-bloc="gauche"] { color: oklch(50% 0.17 20); border-color: color-mix(in oklch, oklch(50% 0.17 20) 45%, var(--line)); }
+      .grp[data-bloc="milieu"] { color: oklch(50% 0.12 95); border-color: color-mix(in oklch, oklch(50% 0.12 95) 45%, var(--line)); }
+      .grp[data-bloc="droite"] { color: oklch(50% 0.13 250); border-color: color-mix(in oklch, oklch(50% 0.13 250) 45%, var(--line)); }
+      .grp[data-bloc="extreme-droite"] { color: oklch(42% 0.11 270); border-color: color-mix(in oklch, oklch(42% 0.11 270) 45%, var(--line)); }
       .badge-gov {
         font-size: 0.72rem;
         font-weight: 700;
@@ -160,6 +176,11 @@
           <span class="cand__title" data-title></span>
         </div>
         <div class="cand__sub"><span data-procedure></span> · <span class="cand__uid" data-uid></span></div>
+        <div class="cand__author" data-author hidden>Déposé par <strong data-author-name></strong> <span class="grp" data-author-grp></span></div>
+        <div class="cand__cosign" data-cosign hidden>
+          <span class="cosign-count" data-cosign-total></span>
+          <span class="cosign-groups" data-cosign-groups></span>
+        </div>
         <div><a data-link target="_blank" rel="noopener">Dossier officiel ↗</a></div>
         <div class="cand__actions">
           <button class="small" data-act="open-promote">Promouvoir</button>
@@ -267,6 +288,27 @@
         $('[data-uid]', node).textContent = c.uid;
         $('[data-procedure]', node).textContent = c.procedure || '—';
         if (c.projetDeLoi) $('[data-gov]', node).hidden = false;
+        // Initiateur : qui a déposé le texte + son groupe politique (teinté par bloc).
+        if (c.auteur) {
+          $('[data-author]', node).hidden = false;
+          $('[data-author-name]', node).textContent = c.auteur.nom;
+          const grp = $('[data-author-grp]', node);
+          grp.textContent = c.auteur.sigle || '—';
+          if (c.auteur.bloc) grp.dataset.bloc = c.auteur.bloc;
+        }
+        // Cosignataires par groupe : signal d'importance (nombre) + soutien transpartisan (chips).
+        if (c.cosignatairesTotal > 0) {
+          $('[data-cosign]', node).hidden = false;
+          $('[data-cosign-total]', node).textContent = c.cosignatairesTotal + ' cosignataires';
+          const groups = $('[data-cosign-groups]', node);
+          (c.cosignatairesParGroupe || []).forEach((g) => {
+            const chip = document.createElement('span');
+            chip.className = 'grp';
+            chip.textContent = (g.sigle || '?') + ' ' + g.count;
+            if (g.bloc) chip.dataset.bloc = g.bloc;
+            groups.appendChild(chip);
+          });
+        }
         $('[data-link]', node).href = c.dossierUrl;
         const form = $('[data-form]', node);
         // Défaut raisonnable pour le fragment vérifié : un extrait distinctif du titre.

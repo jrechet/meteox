@@ -3,9 +3,14 @@ package fr.jrec.meteox.laws.opendata.api;
 import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.anyOf;
 import static org.hamcrest.CoreMatchers.is;
+import static org.hamcrest.CoreMatchers.nullValue;
+import static org.hamcrest.Matchers.hasItems;
 
 import fr.jrec.meteox.laws.opendata.DossierRepository;
+import fr.jrec.meteox.laws.opendata.DossierSignataireRepository;
+import fr.jrec.meteox.laws.opendata.DossierSignataireRepository.Signataire;
 import io.quarkus.test.junit.QuarkusTest;
+import java.util.List;
 import io.restassured.specification.RequestSpecification;
 import jakarta.inject.Inject;
 import java.sql.Connection;
@@ -28,12 +33,14 @@ class AdminDossierApiTest {
   private static final String CAND = "DLR5L17N99999";
 
   @Inject DossierRepository candidates;
+  @Inject DossierSignataireRepository signataires;
   @Inject DataSource dataSource;
 
   @AfterEach
   void cleanup() throws Exception {
     try (Connection c = dataSource.getConnection();
         Statement st = c.createStatement()) {
+      st.executeUpdate("DELETE FROM dossier_signataires WHERE dossier_uid LIKE 'DLR5L17N9%'");
       st.executeUpdate("DELETE FROM dossier_candidates WHERE uid LIKE 'DLR5L17N9%'");
       st.executeUpdate("DELETE FROM laws WHERE id LIKE 'DLR5L17N9%'");
     }
@@ -53,6 +60,54 @@ class AdminDossierApiTest {
   @Test
   void charger_candidates_depuis_origine_admin() {
     browser().when().get("/api/admin/dossiers/candidates").then().statusCode(200);
+  }
+
+  /**
+   * Contrat CONSOMMÉ par la page admin (issue #33) : chaque candidat expose son initiateur
+   * (nom + sigle + bloc) et ses cosignataires agrégés par groupe, triés par mobilisation. Le tri
+   * global place le texte le plus cosigné en premier (signal d'importance).
+   */
+  @Test
+  void candidates_enrichis_auteur_et_cosignataires_par_groupe() {
+    seedCandidate(); // sans signataires — champs à zéro/null attendus
+    candidates.upsert(
+        "DLR5L17N99998", 17, "Texte très soutenu",
+        "https://www.assemblee-nationale.fr/dyn/17/dossiers/DLR5L17N99998",
+        "eau", false, "Proposition de loi ordinaire", false);
+    signataires.replaceForDossier(
+        "DLR5L17N99998",
+        List.of(
+            new Signataire("auteur", "PA001", "Jeanne Martin", "EPR", "milieu"),
+            new Signataire("cosignataire", "PA002", "Ali Dupont", "SOC", "gauche"),
+            new Signataire("cosignataire", "PA003", "Lou Bernard", "SOC", "gauche"),
+            new Signataire("cosignataire", "PA004", "Sam Petit", "RN", "extreme-droite"),
+            new Signataire("cosignataire", "PA005", null, null, null))); // groupe non résolu → "?"
+    String soutenu = "find { it.uid == 'DLR5L17N99998' }";
+    List<String> uids =
+        browser()
+            .when()
+            .get("/api/admin/dossiers/candidates")
+            .then()
+            .statusCode(200)
+            .body(soutenu + ".auteur.nom", is("Jeanne Martin"))
+            .body(soutenu + ".auteur.sigle", is("EPR"))
+            .body(soutenu + ".auteur.bloc", is("milieu"))
+            .body(soutenu + ".cosignatairesTotal", is(4))
+            // Groupes triés par mobilisation décroissante ; groupe non résolu compté sous "?".
+            .body(soutenu + ".cosignatairesParGroupe[0].sigle", is("SOC"))
+            .body(soutenu + ".cosignatairesParGroupe[0].count", is(2))
+            .body(soutenu + ".cosignatairesParGroupe[0].bloc", is("gauche"))
+            .body(soutenu + ".cosignatairesParGroupe.sigle", hasItems("RN", "?"))
+            // Candidat sans signataires : champs neutres, jamais d'erreur.
+            .body("find { it.uid == '" + CAND + "' }.auteur", nullValue())
+            .body("find { it.uid == '" + CAND + "' }.cosignatairesTotal", is(0))
+            .extract()
+            .jsonPath()
+            .getList("uid", String.class);
+    // Tri par importance : à statut égal (hors gouvernement), le plus cosigné passe devant.
+    org.junit.jupiter.api.Assertions.assertTrue(
+        uids.indexOf("DLR5L17N99998") < uids.indexOf(CAND),
+        "le candidat le plus cosigné doit précéder celui sans soutien : " + uids);
   }
 
   @Test
