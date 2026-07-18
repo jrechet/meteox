@@ -47,7 +47,7 @@ class AdminDossierApiTest {
   private void seedCandidate() {
     candidates.upsert(
         CAND, 17, "Dossier de test", "https://www.assemblee-nationale.fr/dyn/17/dossiers/" + CAND,
-        "eau", false);
+        "eau", false, "Proposition de loi ordinaire", false);
   }
 
   @Test
