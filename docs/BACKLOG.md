@@ -16,7 +16,14 @@
 
 ## Definition of Done (commune à toutes les issues)
 
-- `npm test` + `npm run test:e2e` verts en CI ;
+- **Couverture de test : 100 % des actions livrées.** Chaque endpoint, bouton et élément
+  interactif livré est couvert par un test automatisé qui exerce le **vrai chemin** — pas une
+  variante qui contourne le problème. En particulier une action déclenchée par le navigateur
+  est testée **comme le navigateur l'émet** (ex. requête avec en-tête `Origin` pour une action
+  admin même origine ; POST avec `Content-Type`). Deux boutons livrés ⇒ deux boutons testés.
+  Un livrable non couvert par un test n'est **pas** « done ». _(Leçon 2026-07-18 : un `/sync`
+  testé au curl — sans `Origin` — a laissé passer un 403 CORS que seul le navigateur déclenchait.)_
+- `npm test` + `npm run test:e2e` verts en CI ; `./mvnw verify` vert (backend) ;
 - `npm run check:sources` vert (aucune source morte ou non concordante) ;
 - si UI touchée : revue Playwright 375/768/1280/1920 sans overflow ni erreur console ;
 - déployé et vérifié sur l'environnement cible (GitHub Pages via `main` ; backend : env **int** jrec.fr) ;

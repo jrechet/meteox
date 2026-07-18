@@ -63,7 +63,7 @@ jobs:
           MX_STACK: mxlawsint
           MX_DOMAIN: jrec.fr
           MX_PATH_PREFIX: /meteox-laws-int
-          MX_CORS_ORIGINS: https://jrechet.github.io
+          MX_CORS_ORIGINS: https://jrechet.github.io,https://jrec.fr
           MX_GITHUB_TOKEN: ${{ secrets.MX_GITHUB_TOKEN }}
           # Secret optionnel : sans lui l'admin reste fermé (503). À créer côté GitHub pour
           # activer la validation humaine des candidats dossiers / indicateurs.
@@ -121,5 +121,4 @@ jobs:
           done
           echo "::error::API injoignable via $BASE après retries"
           dump
-          exit 1
           exit 1
