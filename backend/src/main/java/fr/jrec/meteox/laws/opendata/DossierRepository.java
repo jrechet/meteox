@@ -119,6 +119,37 @@ public class DossierRepository {
         ps -> ps.setString(1, uid));
   }
 
+  /**
+   * Réconciliation : retire les candidats NON actionnés (status 'candidate') dont l'uid n'a pas
+   * été revu au dernier scan — ils ne matchent plus (résolution d'avant le filtre, dossier
+   * devenu hors thème, etc.). Les candidats promus/rejetés sont préservés. À n'appeler qu'après
+   * un scan réussi.
+   */
+  public int deleteUnactionedNotIn(java.util.Set<String> seenUids) {
+    try (Connection c = dataSource.getConnection()) {
+      if (seenUids.isEmpty()) {
+        try (PreparedStatement ps =
+            c.prepareStatement("DELETE FROM dossier_candidates WHERE status = 'candidate'")) {
+          return ps.executeUpdate();
+        }
+      }
+      String placeholders = String.join(",", java.util.Collections.nCopies(seenUids.size(), "?"));
+      try (PreparedStatement ps =
+          c.prepareStatement(
+              "DELETE FROM dossier_candidates WHERE status = 'candidate' AND uid NOT IN ("
+                  + placeholders
+                  + ")")) {
+        int i = 1;
+        for (String uid : seenUids) {
+          ps.setString(i++, uid);
+        }
+        return ps.executeUpdate();
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException("Réconciliation des candidats impossible", e);
+    }
+  }
+
   private Optional<Candidate> listByUid(String uid) {
     try (Connection c = dataSource.getConnection();
         PreparedStatement ps =

@@ -54,7 +54,8 @@ public class DossierSyncService {
       LOG.info("sync-dossiers : une passe est déjà en cours, celle-ci est ignorée");
       return new SyncReport(0, 0, 0);
     }
-    var stats = new int[3]; // [scanned, candidates, demoted]
+    var stats = new int[4]; // [scanned, candidates, demoted, removed]
+    var seen = new java.util.HashSet<String>();
     try {
       openData.forEachDossier(
           legislature,
@@ -75,10 +76,14 @@ public class DossierSyncService {
               return;
             }
             stats[1]++;
+            seen.add(d.uid());
             candidates.upsert(
                 d.uid(), d.legislature(), d.titre(), d.url(), theme.get(), d.promulgated(),
                 d.procedure(), isProjetDeLoi(d.procedure()));
           });
+      // Réconciliation (seulement après un scan RÉUSSI, pour ne jamais vider la liste sur une
+      // panne réseau) : retire les candidats non actionnés qui ne matchent plus.
+      stats[3] = candidates.deleteUnactionedNotIn(seen);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOG.error("Synchronisation des dossiers interrompue");
@@ -88,8 +93,8 @@ public class DossierSyncService {
       running.set(false);
     }
     LOG.infof(
-        "sync-dossiers : %d dossier(s) scanné(s), %d candidat(s) thématique(s), %d dépublié(s)",
-        stats[0], stats[1], stats[2]);
+        "sync-dossiers : %d scanné(s), %d candidat(s), %d dépublié(s), %d retiré(s)",
+        stats[0], stats[1], stats[2], stats[3]);
     return new SyncReport(stats[0], stats[1], stats[2]);
   }
 

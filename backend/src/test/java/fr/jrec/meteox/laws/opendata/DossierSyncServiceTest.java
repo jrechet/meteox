@@ -162,6 +162,26 @@ class DossierSyncServiceTest {
   }
 
   @Test
+  void reconciliation_removes_unactioned_candidates_that_no_longer_match() throws Exception {
+    stubDataset(17, zipOf(EAU));
+    service.syncAll();
+    assertEquals(1, candidates.listByStatus("candidate").size());
+
+    // Nouveau scan avec un AUTRE dossier : l'ancien candidat non actionné doit disparaître
+    // (c'est ce qui purge, au prochain sync, les résolutions détectées avant le filtre).
+    stubDataset(17, zipOf("DLR5L17N54085"));
+    service.syncAll();
+
+    var uids =
+        candidates.listByStatus("candidate").stream()
+            .map(DossierRepository.Candidate::uid)
+            .toList();
+    assertEquals(1, uids.size());
+    assertTrue(uids.contains("DLR5L17N54085"));
+    assertFalse(uids.contains(EAU), "candidat non revu au dernier scan → retiré (réconciliation)");
+  }
+
+  @Test
   void human_promotion_publishes_an_upcoming_card() throws Exception {
     stubDataset(17, zipOf(EAU));
     service.syncAll(); // détecte EAU en candidat
