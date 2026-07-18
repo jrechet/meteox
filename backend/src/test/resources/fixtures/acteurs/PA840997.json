@@ -1,0 +1,24 @@
+{
+  "acteur": {
+    "uid": {
+      "#text": "PA840997"
+    },
+    "etatCivil": {
+      "ident": {
+        "prenom": "Benoît",
+        "nom": "Biteau"
+      }
+    },
+    "mandats": {
+      "mandat": [
+        {
+          "typeOrgane": "GP",
+          "dateFin": null,
+          "organes": {
+            "organeRef": "PO845439"
+          }
+        }
+      ]
+    }
+  }
+}
