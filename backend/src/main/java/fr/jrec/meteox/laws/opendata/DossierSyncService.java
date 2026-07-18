@@ -1,10 +1,15 @@
 package fr.jrec.meteox.laws.opendata;
 
 import fr.jrec.meteox.laws.opendata.DossierParser.ParsedDossier;
+import fr.jrec.meteox.laws.opendata.DossierSignataireRepository.Aggregate;
+import fr.jrec.meteox.laws.opendata.DossierSignataireRepository.Signataire;
 import fr.jrec.meteox.laws.repository.LawRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -33,6 +38,8 @@ public class DossierSyncService {
 
   @Inject OpenDataDossiers openData;
   @Inject DossierRepository candidates;
+  @Inject DossierSignataireRepository signataires;
+  @Inject SignataireResolver signataireResolver;
   @Inject LawRepository laws;
 
   @ConfigProperty(name = "meteox.sync-dossiers.legislature", defaultValue = "17")
@@ -80,10 +87,16 @@ public class DossierSyncService {
             candidates.upsert(
                 d.uid(), d.legislature(), d.titre(), d.url(), theme.get(), d.promulgated(),
                 d.procedure(), isProjetDeLoi(d.procedure()));
+            // Signal d'importance : auteur + cosignataires du texte déposé, best-effort. Une
+            // résolution qui échoue (document absent, réseau, référentiel indisponible) ne doit
+            // JAMAIS interrompre le scan — on garde le candidat, sans ses signataires.
+            resolveSignatairesQuietly(d);
           });
       // Réconciliation (seulement après un scan RÉUSSI, pour ne jamais vider la liste sur une
-      // panne réseau) : retire les candidats non actionnés qui ne matchent plus.
+      // panne réseau) : retire les candidats non actionnés qui ne matchent plus, et les
+      // signataires des dossiers qui ne sont plus revus (jamais d'orphelins).
       stats[3] = candidates.deleteUnactionedNotIn(seen);
+      signataires.deleteForDossiersNotIn(seen);
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOG.error("Synchronisation des dossiers interrompue");
@@ -96,6 +109,52 @@ public class DossierSyncService {
         "sync-dossiers : %d scanné(s), %d candidat(s), %d dépublié(s), %d retiré(s)",
         stats[0], stats[1], stats[2], stats[3]);
     return new SyncReport(stats[0], stats[1], stats[2]);
+  }
+
+  /**
+   * Résout et stocke les signataires du texte déposé d'un candidat, sans jamais laisser une erreur
+   * remonter dans la boucle de scan. Ne fait rien si le dossier n'a pas de document de dépôt.
+   */
+  private void resolveSignatairesQuietly(ParsedDossier d) {
+    if (d.depotDocumentRef() == null) {
+      return;
+    }
+    try {
+      List<Signataire> resolved = signataireResolver.resolve(d.legislature(), d.depotDocumentRef());
+      signataires.replaceForDossier(d.uid(), resolved);
+    } catch (RuntimeException e) {
+      LOG.warnf("Signataires du dossier %s non enregistrés (%s) — candidat conservé", d.uid(), e.getMessage());
+    }
+  }
+
+  /**
+   * Candidats en attente de relecture, enrichis de leur initiateur et du soutien (cosignataires)
+   * agrégé par groupe politique (issue #33, sous-issue D). Tri par importance : les projets de loi
+   * (gouvernement) d'abord, puis les textes les plus soutenus (nombre de cosignataires décroissant).
+   * L'agrégat est calculé en UNE requête groupée (pas de N+1).
+   */
+  public List<CandidateView> candidatesForReview() {
+    List<DossierRepository.Candidate> raw = candidates.listByStatus("candidate");
+    Map<String, Aggregate> aggregates =
+        signataires.aggregate(raw.stream().map(DossierRepository.Candidate::uid).toList());
+    return raw.stream()
+        .map(c -> toView(c, aggregates.getOrDefault(c.uid(), Aggregate.empty())))
+        .sorted(
+            Comparator.comparing(CandidateView::projetDeLoi)
+                .reversed()
+                .thenComparing(Comparator.comparingInt(CandidateView::cosignatairesTotal).reversed()))
+        .toList();
+  }
+
+  private static CandidateView toView(DossierRepository.Candidate c, Aggregate agg) {
+    CandidateView.Auteur auteur = null;
+    if (agg.auteur() != null) {
+      auteur = new CandidateView.Auteur(agg.auteur().nom(), agg.auteur().groupeSigle(), agg.auteur().bloc());
+    }
+    return new CandidateView(
+        c.uid(), c.legislature(), c.titre(), c.dossierUrl(), c.theme(), c.procedure(),
+        c.projetDeLoi(), c.terminated(), c.status(), c.promotedLawId(),
+        auteur, agg.cosignatairesTotal(), agg.cosignatairesParGroupe());
   }
 
   /**

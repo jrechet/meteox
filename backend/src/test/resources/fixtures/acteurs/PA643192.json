@@ -1,0 +1,24 @@
+{
+  "acteur": {
+    "uid": {
+      "#text": "PA643192"
+    },
+    "etatCivil": {
+      "ident": {
+        "prenom": "Chantal",
+        "nom": "Jourdan"
+      }
+    },
+    "mandats": {
+      "mandat": [
+        {
+          "typeOrgane": "GP",
+          "dateFin": null,
+          "organes": {
+            "organeRef": "PO845419"
+          }
+        }
+      ]
+    }
+  }
+}

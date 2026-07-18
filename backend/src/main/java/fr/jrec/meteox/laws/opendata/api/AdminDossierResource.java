@@ -1,6 +1,5 @@
 package fr.jrec.meteox.laws.opendata.api;
 
-import fr.jrec.meteox.laws.opendata.DossierRepository;
 import fr.jrec.meteox.laws.opendata.DossierSyncService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -27,18 +26,20 @@ import org.eclipse.microprofile.context.ManagedExecutor;
 public class AdminDossierResource {
 
   @Inject DossierSyncService service;
-  @Inject DossierRepository repository;
   @Inject ManagedExecutor executor;
 
   @ConfigProperty(name = "meteox.admin.token")
   Optional<String> adminToken;
 
-  /** Candidats détectés en attente de relecture (jamais publics tant que non promus). */
+  /**
+   * Candidats détectés en attente de relecture (jamais publics tant que non promus), enrichis de
+   * leur initiateur et du soutien (cosignataires) agrégé par groupe, triés par importance.
+   */
   @GET
   @Path("/candidates")
   public Response candidates(@HeaderParam("X-Admin-Token") String token) {
     requireAdmin(token);
-    return Response.ok(repository.listByStatus("candidate")).build();
+    return Response.ok(service.candidatesForReview()).build();
   }
 
   /**

@@ -1,0 +1,24 @@
+{
+  "acteur": {
+    "uid": {
+      "#text": "PA795482"
+    },
+    "etatCivil": {
+      "ident": {
+        "prenom": "Manon",
+        "nom": "Meunier"
+      }
+    },
+    "mandats": {
+      "mandat": [
+        {
+          "typeOrgane": "GP",
+          "dateFin": null,
+          "organes": {
+            "organeRef": "PO845413"
+          }
+        }
+      ]
+    }
+  }
+}

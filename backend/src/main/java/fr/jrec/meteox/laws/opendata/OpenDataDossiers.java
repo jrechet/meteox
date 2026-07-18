@@ -13,6 +13,7 @@ import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.time.Duration;
 import java.util.Enumeration;
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -72,6 +73,33 @@ public class OpenDataDossiers {
     if (failures > 0) {
       LOG.warnf("%d dossier(s) ignoré(s) (parsing) sur la législature %d", failures, legislature);
     }
+  }
+
+  /**
+   * Extrait le JSON brut d'un document ({@code json/document/{uid}.json}) du zip déjà en cache —
+   * le jeu {@code Dossiers_Legislatifs} contient AUSSI les documents, à côté des dossiers. Rend le
+   * contenu de l'entrée, ou vide si le document ne figure pas dans le zip (best-effort : un dépôt
+   * peut référencer un document absent de l'export). Réutilise le même cache que
+   * {@link #forEachDossier} (pas de second téléchargement quand le zip est déjà validé).
+   */
+  public Optional<byte[]> documentJson(int legislature, String documentUid)
+      throws IOException, InterruptedException {
+    if (documentUid == null || documentUid.isBlank()) {
+      return Optional.empty();
+    }
+    Path zip = ensureDataset(legislature);
+    String suffix = "document/" + documentUid + ".json";
+    try (ZipFile zf = new ZipFile(zip.toFile())) {
+      for (Enumeration<? extends ZipEntry> e = zf.entries(); e.hasMoreElements(); ) {
+        ZipEntry entry = e.nextElement();
+        if (!entry.isDirectory() && entry.getName().endsWith(suffix)) {
+          try (InputStream in = zf.getInputStream(entry)) {
+            return Optional.of(in.readAllBytes());
+          }
+        }
+      }
+    }
+    return Optional.empty();
   }
 
   /** Télécharge (ou revalide via ETag) le zip de la législature ; rend le chemin local. */

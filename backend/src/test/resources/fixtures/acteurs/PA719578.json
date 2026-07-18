@@ -1,0 +1,24 @@
+{
+  "acteur": {
+    "uid": {
+      "#text": "PA719578"
+    },
+    "etatCivil": {
+      "ident": {
+        "prenom": "Loïc",
+        "nom": "Prud'homme"
+      }
+    },
+    "mandats": {
+      "mandat": [
+        {
+          "typeOrgane": "GP",
+          "dateFin": null,
+          "organes": {
+            "organeRef": "PO845413"
+          }
+        }
+      ]
+    }
+  }
+}
