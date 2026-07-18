@@ -1,0 +1,41 @@
+{
+  "dossierParlementaire": {
+    "@xsi:type": "DossierLegislatif_Type",
+    "uid": "DLR5L17NTEST999",
+    "legislature": "17",
+    "titreDossier": {
+      "titre": "Dossier de test sans acte de dépôt",
+      "titreChemin": "dossier-test-sans-depot"
+    },
+    "procedureParlementaire": {
+      "libelle": "Proposition de loi ordinaire"
+    },
+    "actesLegislatifs": {
+      "acteLegislatif": {
+        "@xsi:type": "Etape_Type",
+        "uid": "L17-AN1-TEST999",
+        "codeActe": "AN1",
+        "libelleActe": {
+          "nomCanonique": "1ère lecture (1ère assemblée saisie)",
+          "libelleCourt": "1ère lecture"
+        },
+        "organeRef": "PO838901",
+        "dateActe": null,
+        "actesLegislatifs": {
+          "acteLegislatif": {
+            "@xsi:type": "Etape_Type",
+            "uid": "L17-AN1-COM-TEST999",
+            "codeActe": "AN1-COM",
+            "libelleActe": {
+              "nomCanonique": "Travaux des commissions",
+              "libelleCourt": "Travaux des commissions"
+            },
+            "organeRef": "PO838901",
+            "dateActe": null,
+            "actesLegislatifs": null
+          }
+        }
+      }
+    }
+  }
+}
