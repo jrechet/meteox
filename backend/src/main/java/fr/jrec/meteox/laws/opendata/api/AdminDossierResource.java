@@ -62,14 +62,14 @@ public class AdminDossierResource {
       @HeaderParam("X-Admin-Token") String token,
       PromoteRequest request) {
     adminAuth.require(token);
-    if (request == null || request.category() == null || request.date() == null) {
+    if (request == null || request.category() == null) {
       return Response.status(Response.Status.BAD_REQUEST)
-          .entity(new Error("category et date sont requis"))
+          .entity(new Error("category est requis"))
           .build();
     }
     try {
       String lawId =
-          service.promote(uid, request.category(), request.date(), request.summary(), request.sourceExpect());
+          service.promote(uid, request.category(), request.summary(), request.sourceExpect());
       return Response.status(Response.Status.CREATED).entity(new Promoted(lawId)).build();
     } catch (IllegalArgumentException e) {
       return Response.status(Response.Status.NOT_FOUND).entity(new Error(e.getMessage())).build();
@@ -89,7 +89,7 @@ public class AdminDossierResource {
 
   record SyncStatus(String status) {}
 
-  record PromoteRequest(String category, String date, String summary, String sourceExpect) {}
+  record PromoteRequest(String category, String summary, String sourceExpect) {}
 
   record Promoted(String lawId) {}
 

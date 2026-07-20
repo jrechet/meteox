@@ -61,7 +61,7 @@ class AdminDossierApiTest {
   private void seedCandidate() {
     candidates.upsert(
         CAND, 17, "Dossier de test", "https://www.assemblee-nationale.fr/dyn/17/dossiers/" + CAND,
-        "eau", false, "Proposition de loi ordinaire", false);
+        "eau", false, "Proposition de loi ordinaire", false, "En commission");
   }
 
   @Test
@@ -80,7 +80,7 @@ class AdminDossierApiTest {
     candidates.upsert(
         "DLR5L17N99998", 17, "Texte très soutenu",
         "https://www.assemblee-nationale.fr/dyn/17/dossiers/DLR5L17N99998",
-        "eau", false, "Proposition de loi ordinaire", false);
+        "eau", false, "Proposition de loi ordinaire", false, "En 1re lecture à l'Assemblée");
     signataires.replaceForDossier(
         "DLR5L17N99998",
         List.of(
@@ -108,6 +108,8 @@ class AdminDossierApiTest {
             // Candidat sans signataires : champs neutres, jamais d'erreur.
             .body("find { it.uid == '" + CAND + "' }.auteur", nullValue())
             .body("find { it.uid == '" + CAND + "' }.cosignatairesTotal", is(0))
+            // L'étape officielle (sourcée) est exposée à la relecture.
+            .body("find { it.uid == '" + CAND + "' }.stage", is("En commission"))
             .extract()
             .jsonPath()
             .getList("uid", String.class);
@@ -126,9 +128,10 @@ class AdminDossierApiTest {
   @Test
   void promouvoir_depuis_origine_admin() {
     seedCandidate();
+    // La page admin n'envoie PLUS de date : la carte « à venir » affiche l'étape officielle.
     browser()
         .contentType("application/json")
-        .body("{\"category\":\"eau\",\"date\":\"2026-09-01\",\"summary\":\"résumé\",\"sourceExpect\":\"test\"}")
+        .body("{\"category\":\"eau\",\"summary\":\"résumé\",\"sourceExpect\":\"test\"}")
         .when()
         .post("/api/admin/dossiers/" + CAND + "/promote")
         .then()

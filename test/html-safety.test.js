@@ -50,9 +50,18 @@ describe('isValidLaw', () => {
     expect(isValidLaw({ ...good, date: '04/04/2024' })).toBe(false);
     expect(isValidLaw({ ...good, status: 'draft' })).toBe(false);
   });
-  test("n'exige pas de votes pour une loi upcoming", () => {
-    const up = { ...good, status: 'upcoming', votes: undefined };
-    expect(isValidLaw(up)).toBe(true);
+  test('rejette une loi passed sans date (vraie date de scrutin obligatoire)', () => {
+    const { date, ...sansDate } = good;
+    expect(isValidLaw(sansDate)).toBe(false);
+  });
+  test("accepte une loi upcoming sans date ni votes mais avec une étape (stage)", () => {
+    const { date, votes, ...base } = good;
+    expect(isValidLaw({ ...base, status: 'upcoming', stage: 'En commission' })).toBe(true);
+  });
+  test('rejette une loi upcoming sans étape (stage manquante ou vide)', () => {
+    const { date, votes, ...base } = good;
+    expect(isValidLaw({ ...base, status: 'upcoming' })).toBe(false);
+    expect(isValidLaw({ ...base, status: 'upcoming', stage: '   ' })).toBe(false);
   });
 });
 

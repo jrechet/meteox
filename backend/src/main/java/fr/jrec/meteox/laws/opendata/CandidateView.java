@@ -18,6 +18,7 @@ public record CandidateView(
     boolean terminated,
     String status,
     String promotedLawId,
+    String stage,
     Auteur auteur,
     int cosignatairesTotal,
     java.util.List<GroupCount> cosignatairesParGroupe) {

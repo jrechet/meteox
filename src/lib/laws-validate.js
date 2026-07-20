@@ -23,9 +23,12 @@ function isBlocVotes(v) {
 }
 
 /**
- * Vrai si `l` est une loi exploitable par le rendu. En particulier une loi `passed` DOIT
- * porter ses 4 blocs de votes (la carte les déréférence) — c'est le bug que cette validation
- * ferme : plutôt basculer sur le snapshot que rendre une carte qui plante.
+ * Vrai si `l` est une loi exploitable par le rendu. Deux formes valides :
+ *  - `passed` : DOIT porter une vraie date de scrutin (YYYY-MM-DD) et ses 4 blocs de votes (la
+ *    carte les déréférence) — c'est le bug que cette validation ferme.
+ *  - `upcoming` : PAS de date (l'open data n'en source aucune) mais une `stage` non vide (l'étape
+ *    officielle du dossier, affichée à la place de la date).
+ * Plutôt basculer sur le snapshot que rendre une carte qui plante.
  */
 export function isValidLaw(l) {
   if (!l || typeof l !== 'object') return false;
@@ -34,12 +37,15 @@ export function isValidLaw(l) {
   if (typeof l.summary !== 'string') return false;
   if (typeof l.category !== 'string') return false;
   if (l.status !== 'passed' && l.status !== 'upcoming') return false;
-  if (typeof l.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(l.date)) return false;
   if (!isHttpsUrl(l.sourceUrl) || !isHttpsUrl(l.textUrl)) return false;
   if (l.indicators == null || typeof l.indicators !== 'object') return false;
   if (l.status === 'passed') {
+    if (typeof l.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(l.date)) return false;
     if (l.votes == null || typeof l.votes !== 'object') return false;
     if (!BLOCS.every((b) => isBlocVotes(l.votes[b]))) return false;
+  } else {
+    // upcoming : l'étape officielle remplace la date (jamais de date fabriquée).
+    if (typeof l.stage !== 'string' || l.stage.trim() === '') return false;
   }
   return true;
 }

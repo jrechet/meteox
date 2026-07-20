@@ -114,21 +114,23 @@ public class LawRepository {
 
   /**
    * Crée une carte {@code upcoming} publiée à partir d'un dossier validé (issue #3, tâche 2).
-   * Indicateurs et votes sont vides au départ (aucun scrutin encore) ; check-sources vérifiera
-   * l'URL du dossier. Rejette si l'identifiant existe déjà.
+   * PAS de date : l'open data ne source aucune date de scrutin à venir — la carte affiche l'ÉTAPE
+   * officielle du dossier ({@code stage}, sourcée). Indicateurs et votes sont vides au départ ;
+   * check-sources vérifiera l'URL du dossier. Rejette si l'identifiant existe déjà.
    */
   public void insertUpcoming(
       String id,
       String title,
       String category,
-      String date,
       String summary,
       String sourceUrl,
       String sourceExpect,
       String textUrl,
-      String textExpect) {
+      String textExpect,
+      String stage) {
     insertLaw(
-        "upcoming", id, title, category, date, summary, sourceUrl, sourceExpect, textUrl, textExpect);
+        "upcoming", id, title, category, null, summary, sourceUrl, sourceExpect, textUrl,
+        textExpect, stage);
   }
 
   /**
@@ -147,7 +149,8 @@ public class LawRepository {
       String textUrl,
       String textExpect) {
     insertLaw(
-        "passed", id, title, category, date, summary, sourceUrl, sourceExpect, textUrl, textExpect);
+        "passed", id, title, category, date, summary, sourceUrl, sourceExpect, textUrl,
+        textExpect, null);
   }
 
   /** URLs sources de TOUTES les lois (même dépubliées) — pour ne jamais re-proposer un scrutin déjà couvert. */
@@ -175,10 +178,11 @@ public class LawRepository {
       String sourceUrl,
       String sourceExpect,
       String textUrl,
-      String textExpect) {
+      String textExpect,
+      String stage) {
     execute(
         "INSERT INTO laws (id, title, category, status, date, summary, source_url, source_expect,"
-            + " text_url, text_expect, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
+            + " text_url, text_expect, stage, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
         ps -> {
           ps.setString(1, id);
           ps.setString(2, title);
@@ -190,6 +194,7 @@ public class LawRepository {
           ps.setString(8, sourceExpect);
           ps.setString(9, textUrl);
           ps.setString(10, textExpect);
+          ps.setString(11, stage);
         });
   }
 
@@ -242,6 +247,7 @@ public class LawRepository {
         rs.getString("source_expect"),
         rs.getString("text_url"),
         rs.getString("text_expect"),
+        rs.getString("stage"),
         loadIndicators(c, id),
         loadVotes(c, id),
         rs.getInt("published") == 1);

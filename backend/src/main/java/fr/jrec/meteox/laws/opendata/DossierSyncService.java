@@ -75,7 +75,7 @@ public class DossierSyncService {
             seen.add(d.uid());
             candidates.upsert(
                 d.uid(), d.legislature(), d.titre(), d.url(), theme.get(), d.promulgated(),
-                d.procedure(), isProjetDeLoi(d.procedure()));
+                d.procedure(), isProjetDeLoi(d.procedure()), d.stage());
             // Signal d'importance : auteur + cosignataires du texte déposé, best-effort. Une
             // résolution qui échoue (document absent, réseau, référentiel indisponible) ne doit
             // JAMAIS interrompre le scan — on garde le candidat, sans ses signataires.
@@ -142,17 +142,18 @@ public class DossierSyncService {
     }
     return new CandidateView(
         c.uid(), c.legislature(), c.titre(), c.dossierUrl(), c.theme(), c.procedure(),
-        c.projetDeLoi(), c.terminated(), c.status(), c.promotedLawId(),
+        c.projetDeLoi(), c.terminated(), c.status(), c.promotedLawId(), c.stage(),
         auteur, agg.cosignatairesTotal(), agg.cosignatairesParGroupe());
   }
 
   /**
    * Validation humaine : promeut un candidat en carte {@code upcoming} publiée (issue #3).
-   * L'humain fournit les champs éditoriaux (catégorie, résumé, date prévue, fragment attendu
-   * pour la vérification de source). Rend l'identifiant de la loi créée.
+   * L'humain fournit les champs éditoriaux (catégorie, résumé, fragment attendu pour la
+   * vérification de source). Il n'y a PLUS de date prévue : l'open data ne source pas de date de
+   * scrutin à venir — la carte affiche l'ÉTAPE officielle du dossier (sourcée, stockée au scan).
+   * Rend l'identifiant de la loi créée.
    */
-  public String promote(
-      String uid, String category, String date, String summary, String sourceExpect) {
+  public String promote(String uid, String category, String summary, String sourceExpect) {
     DossierRepository.Candidate c =
         candidates
             .findByUid(uid)
@@ -164,10 +165,12 @@ public class DossierSyncService {
       throw new IllegalStateException("Candidat déjà promu : " + uid);
     }
     String fragment = (sourceExpect == null || sourceExpect.isBlank()) ? c.titre() : sourceExpect;
+    String stage =
+        (c.stage() == null || c.stage().isBlank()) ? DossierParser.STAGE_FALLBACK : c.stage();
     laws.insertUpcoming(
-        uid, c.titre(), category, date, summary, c.dossierUrl(), fragment, c.dossierUrl(), fragment);
+        uid, c.titre(), category, summary, c.dossierUrl(), fragment, c.dossierUrl(), fragment, stage);
     candidates.markPromoted(uid, uid);
-    LOG.infof("Candidat %s promu en carte upcoming (catégorie %s)", uid, category);
+    LOG.infof("Candidat %s promu en carte upcoming (catégorie %s, étape « %s »)", uid, category, stage);
     return uid;
   }
 
