@@ -398,9 +398,11 @@
         }
         $('[data-link]', node).href = c.dossierUrl;
         const form = $('[data-form]', node);
-        // Défaut raisonnable pour le fragment vérifié : un extrait distinctif du titre.
+        // Formulaire pré-rempli pour une promotion en un clic (rien à saisir à la main) :
+        // fragment vérifié = extrait distinctif du titre, résumé = titre, date prévue = aujourd'hui.
         $('[data-f="sourceExpect"]', form).value = c.titre.split(/\s+/).slice(0, 6).join(' ');
         $('[data-f="summary"]', form).value = c.titre + '.';
+        $('[data-f="date"]', form).value = new Date().toISOString().slice(0, 10);
         $('[data-act="open-promote"]', node).addEventListener('click', () => form.classList.toggle('hidden'));
         $('[data-act="cancel-promote"]', node).addEventListener('click', () => form.classList.add('hidden'));
         $('[data-act="reject"]', node).addEventListener('click', () => reject(c.uid));
