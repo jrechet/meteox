@@ -1,0 +1,1 @@
+{"acteur": {"uid": {"#text": "PA000001"}, "etatCivil": {"ident": {"civ": "Mme", "prenom": "Test", "nom": "Nonmappée"}}, "mandats": {"mandat": {"typeOrgane": "GP", "dateFin": null, "organes": {"organeRef": "PO000001"}}}}}

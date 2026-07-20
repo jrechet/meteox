@@ -8,11 +8,8 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.jboss.logging.Logger;
 
@@ -27,14 +24,6 @@ import org.jboss.logging.Logger;
 public class DossierSyncService {
 
   private static final Logger LOG = Logger.getLogger(DossierSyncService.class);
-
-  // Mots-clés thématiques (frontières de mot, sur titre normalisé sans accents). Volontairement
-  // large : le tri fin est fait par la validation humaine, pas par ce filtre grossier.
-  private static final Pattern THEME =
-      Pattern.compile(
-          "\\b(eaux?|pesticides?|glyphosate|pfas|climat\\w*|canicul\\w*|energ\\w*|renouvelabl\\w*"
-              + "|carbone|agricol\\w*|agricultur\\w*|pesticide\\w*|biodiversit\\w*|environnement\\w*"
-              + "|pollution\\w*|ecologi\\w*|nappe\\w*|zones? humides?|littoral\\w*|forets?)\\b");
 
   @Inject OpenDataDossiers openData;
   @Inject DossierRepository candidates;
@@ -201,24 +190,16 @@ public class DossierSyncService {
 
   /** Vrai si la procédure est un projet OU une proposition de LOI (et non une résolution/rapport). */
   static boolean isLaw(String procedure) {
-    return normalize(procedure).contains("loi");
+    return ThemeFilter.normalize(procedure).contains("loi");
   }
 
   /** Vrai si c'est un PROJET de loi (origine gouvernementale) — pas une proposition parlementaire. */
   static boolean isProjetDeLoi(String procedure) {
-    return normalize(procedure).startsWith("projet de loi");
+    return ThemeFilter.normalize(procedure).startsWith("projet de loi");
   }
 
-  /** Premier mot-clé thématique présent dans le titre (comparaison sans accents), s'il y en a un. */
+  /** Premier mot-clé thématique présent dans le titre (filtre commun), s'il y en a un. */
   static Optional<String> matchTheme(String titre) {
-    Matcher m = THEME.matcher(normalize(titre));
-    return m.find() ? Optional.of(m.group(1)) : Optional.empty();
-  }
-
-  private static String normalize(String s) {
-    String noAccents =
-        java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD)
-            .replaceAll("\\p{M}", "");
-    return noAccents.toLowerCase(Locale.FRENCH);
+    return ThemeFilter.matchTheme(titre);
   }
 }
