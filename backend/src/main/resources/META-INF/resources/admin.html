@@ -125,6 +125,12 @@
       .status--err { color: var(--red); }
       .status--ok { color: var(--green); }
       .empty { color: var(--ink-faint); padding: 1.5rem 0; text-align: center; }
+      .section-title {
+        font-size: 0.95rem;
+        font-weight: 700;
+        letter-spacing: -0.01em;
+        margin: 1.6rem 0 0.6rem;
+      }
       .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
     </style>
   </head>
@@ -150,6 +156,7 @@
 
       <p id="status" role="status" aria-live="polite"></p>
 
+      <h2 class="section-title">Prochains scrutins — dossiers candidats</h2>
       <div class="toolbar" id="filters" hidden>
         <div>
           <label for="f-theme">Thème</label>
@@ -165,6 +172,24 @@
 
       <div class="card" id="list-card" hidden>
         <div id="list"></div>
+      </div>
+
+      <h2 class="section-title">Corpus — lois votées candidates</h2>
+      <div class="toolbar" id="law-filters" hidden>
+        <div>
+          <label for="lf-theme">Thème</label>
+          <select id="lf-theme"><option value="">Tous</option></select>
+        </div>
+        <div class="grow">
+          <label for="lf-search">Recherche (titre)</label>
+          <input id="lf-search" type="search" placeholder="ex. énergie, agriculture, pollution…" />
+        </div>
+        <button id="law-sync" class="ghost" title="Relance la détection des scrutins solennels/d'ensemble depuis l'open data (peut prendre ~1-2 min)">Synchroniser les lois votées</button>
+        <span class="count" id="law-count"></span>
+      </div>
+
+      <div class="card" id="law-list-card" hidden>
+        <div id="law-list"></div>
       </div>
     </main>
 
@@ -218,6 +243,65 @@
       </div>
     </template>
 
+    <template id="law-tpl">
+      <div class="cand">
+        <div class="cand__head">
+          <span class="tag" data-theme></span>
+          <span class="cand__title" data-title></span>
+        </div>
+        <div class="cand__sub">
+          Scrutin du <span data-date></span> · n°<span data-numero></span> (<span data-leg></span>e lég.) · <span class="cand__uid" data-uid></span>
+        </div>
+        <div class="cand__cosign" data-votes title="pour / contre / abstentions"></div>
+        <div><a data-link target="_blank" rel="noopener">Scrutin officiel ↗</a></div>
+        <div class="cand__actions">
+          <button class="small" data-act="open-promote">Promouvoir</button>
+          <button class="small danger" data-act="reject">Rejeter</button>
+        </div>
+        <form class="promote-form hidden" data-form>
+          <div class="row">
+            <div class="grow">
+              <label>Titre de la carte</label>
+              <input type="text" data-f="title" />
+            </div>
+            <div>
+              <label>Catégorie</label>
+              <select data-f="category">
+                <option value="agriculture">Agriculture &amp; Sols</option>
+                <option value="eau">Gestion de l'Eau</option>
+                <option value="pesticides">Pesticides</option>
+                <option value="canicule">Canicule &amp; Chaleur</option>
+              </select>
+            </div>
+          </div>
+          <div class="row" style="margin-top:0.6rem;">
+            <div class="grow">
+              <label>URL du dossier officiel (assemblee-nationale.fr)</label>
+              <input type="url" data-f="textUrl" placeholder="https://www.assemblee-nationale.fr/dyn/17/dossiers/DLR…" />
+            </div>
+            <div class="grow">
+              <label>Fragment de titre attendu sur le dossier</label>
+              <input type="text" data-f="textExpect" />
+            </div>
+          </div>
+          <div class="row" style="margin-top:0.6rem;">
+            <div class="grow">
+              <label>Fragment de titre attendu sur le scrutin</label>
+              <input type="text" data-f="sourceExpect" />
+            </div>
+          </div>
+          <div style="margin-top:0.6rem;">
+            <label>Résumé (affiché sur la carte)</label>
+            <textarea data-f="summary"></textarea>
+          </div>
+          <div style="margin-top:0.6rem;display:flex;gap:0.5rem;">
+            <button type="submit" class="small">Publier la loi votée</button>
+            <button type="button" class="small ghost" data-act="cancel-promote">Annuler</button>
+          </div>
+        </form>
+      </div>
+    </template>
+
     <script>
       // API servie sur la même origine (backend), relative au dossier de cette page —
       // fonctionne aussi bien en local (:8080/admin.html) que derrière Traefik
@@ -226,6 +310,7 @@
       const $ = (sel, root = document) => root.querySelector(sel);
       const statusEl = $('#status');
       let candidates = [];
+      let lawCandidates = [];
 
       const token = () => $('#token').value.trim();
 
@@ -235,7 +320,7 @@
       }
 
       async function api(path, options = {}) {
-        const res = await fetch(BASE + 'api/admin/dossiers' + path, {
+        const res = await fetch(BASE + 'api/admin' + path, {
           ...options,
           headers: { 'X-Admin-Token': token(), 'Content-Type': 'application/json', ...(options.headers || {}) },
         });
@@ -334,10 +419,15 @@
         sessionStorage.setItem('mx_admin_token', token());
         setStatus('Chargement…');
         try {
-          candidates = await api('/candidates');
+          candidates = await api('/dossiers/candidates');
+          lawCandidates = await api('/corpus/candidates');
           themeOptions();
           render();
-          setStatus(candidates.length + ' candidat(s) chargé(s).', 'ok');
+          lawThemeOptions();
+          renderLaws();
+          setStatus(
+            candidates.length + ' dossier(s) et ' + lawCandidates.length + ' loi(s) votée(s) en attente.',
+            'ok');
         } catch (e) {
           setStatus(e.message, 'err');
         }
@@ -346,7 +436,7 @@
       async function sync() {
         if (!token()) return setStatus('Saisis le jeton admin.', 'err');
         try {
-          const r = await api('/sync', { method: 'POST' });
+          const r = await api('/dossiers/sync', { method: 'POST' });
           if (r && r.status === 'running') {
             setStatus('Une synchronisation est déjà en cours. Recharge les candidats dans ~1 min.', 'ok');
           } else {
@@ -361,7 +451,7 @@
         if (!body.category || !body.date) return setStatus('Catégorie et date sont requises.', 'err');
         setStatus('Publication…');
         try {
-          const r = await api('/' + encodeURIComponent(uid) + '/promote', {
+          const r = await api('/dossiers/' + encodeURIComponent(uid) + '/promote', {
             method: 'POST',
             body: JSON.stringify(body),
           });
@@ -376,9 +466,125 @@
       async function reject(uid) {
         if (!confirm('Rejeter ce candidat ? Il ne sera plus proposé.')) return;
         try {
-          await api('/' + encodeURIComponent(uid) + '/reject', { method: 'POST' });
+          await api('/dossiers/' + encodeURIComponent(uid) + '/reject', { method: 'POST' });
           candidates = candidates.filter((c) => c.uid !== uid);
           render();
+          setStatus('Candidat rejeté.', 'ok');
+        } catch (e) {
+          setStatus(e.message, 'err');
+        }
+      }
+
+      // --- Corpus : lois votées candidates (scrutins solennels / votes sur l'ensemble) ---
+
+      const BLOC_LABELS = { gauche: 'Gauche', milieu: 'Milieu', droite: 'Droite', extremeDroite: 'Extr. droite' };
+
+      function lawThemeOptions() {
+        const themes = [...new Set(lawCandidates.map((c) => c.theme))].sort();
+        const sel = $('#lf-theme');
+        sel.innerHTML = '<option value="">Tous</option>' +
+          themes.map((t) => `<option value="${t}">${t}</option>`).join('');
+      }
+
+      function renderLaws() {
+        const theme = $('#lf-theme').value;
+        const q = $('#lf-search').value.trim().toLowerCase();
+        const shown = lawCandidates.filter(
+          (c) => (!theme || c.theme === theme) && (!q || c.titre.toLowerCase().includes(q)),
+        );
+        const list = $('#law-list');
+        list.textContent = '';
+        if (!lawCandidates.length) {
+          list.innerHTML = '<p class="empty">Aucune loi votée en attente. Lance « Synchroniser les lois votées » pour rafraîchir depuis l\'open data.</p>';
+        } else if (!shown.length) {
+          list.innerHTML = '<p class="empty">Aucune loi votée pour ce filtre.</p>';
+        } else {
+          const tpl = $('#law-tpl');
+          shown.forEach((c) => list.appendChild(lawNode(tpl, c)));
+        }
+        $('#law-count').textContent = shown.length + ' / ' + lawCandidates.length + ' candidat(s)';
+        $('#law-filters').hidden = false;
+        $('#law-list-card').hidden = false;
+      }
+
+      function lawNode(tpl, c) {
+        const node = tpl.content.cloneNode(true);
+        $('[data-theme]', node).textContent = c.theme;
+        $('[data-title]', node).textContent = c.titre;
+        $('[data-date]', node).textContent = c.dateScrutin;
+        $('[data-numero]', node).textContent = c.numero;
+        $('[data-leg]', node).textContent = c.legislature;
+        $('[data-uid]', node).textContent = c.uid;
+        // Votes par bloc capturés au scan (décompte officiel) : chips teintées par bloc.
+        const votes = $('[data-votes]', node);
+        Object.entries(c.votes || {}).forEach(([bloc, v]) => {
+          const chip = document.createElement('span');
+          chip.className = 'grp';
+          chip.textContent = (BLOC_LABELS[bloc] || bloc) + ' ' + v.for + '/' + v.against + '/' + v.abstained;
+          chip.dataset.bloc = bloc === 'extremeDroite' ? 'extreme-droite' : bloc;
+          votes.appendChild(chip);
+        });
+        $('[data-link]', node).href = c.scrutinUrl;
+        const form = $('[data-form]', node);
+        // Défauts raisonnables : titre sans le « l'ensemble de/du » du scrutin, fragments distinctifs.
+        $('[data-f="title"]', form).value = c.titre.replace(/^l[’']ensemble (du |de la |de l[’']|des |de )/i, '');
+        $('[data-f="sourceExpect"]', form).value = c.titre.split(/\s+/).slice(0, 6).join(' ');
+        $('[data-f="summary"]', form).value = c.titre + '.';
+        $('[data-act="open-promote"]', node).addEventListener('click', () => form.classList.toggle('hidden'));
+        $('[data-act="cancel-promote"]', node).addEventListener('click', () => form.classList.add('hidden'));
+        $('[data-act="reject"]', node).addEventListener('click', () => rejectLaw(c.uid));
+        form.addEventListener('submit', (e) => {
+          e.preventDefault();
+          promoteLaw(c.uid, {
+            title: $('[data-f="title"]', form).value.trim(),
+            category: $('[data-f="category"]', form).value,
+            summary: $('[data-f="summary"]', form).value.trim(),
+            sourceExpect: $('[data-f="sourceExpect"]', form).value.trim(),
+            textUrl: $('[data-f="textUrl"]', form).value.trim(),
+            textExpect: $('[data-f="textExpect"]', form).value.trim(),
+          });
+        });
+        return node;
+      }
+
+      async function syncLaws() {
+        if (!token()) return setStatus('Saisis le jeton admin.', 'err');
+        try {
+          const r = await api('/corpus/sync', { method: 'POST' });
+          if (r && r.status === 'running') {
+            setStatus('Une détection des lois votées est déjà en cours. Recharge les candidats dans ~1-2 min.', 'ok');
+          } else {
+            setStatus('Détection des lois votées lancée en arrière-plan (~1-2 min). Clique « Charger les candidats » ensuite.', 'ok');
+          }
+        } catch (e) {
+          setStatus(e.message, 'err');
+        }
+      }
+
+      async function promoteLaw(uid, body) {
+        if (!body.title || !body.category || !body.summary || !body.textUrl || !body.textExpect) {
+          return setStatus('Titre, catégorie, résumé et dossier officiel (URL + fragment) sont requis.', 'err');
+        }
+        setStatus('Publication…');
+        try {
+          const r = await api('/corpus/' + encodeURIComponent(uid) + '/promote', {
+            method: 'POST',
+            body: JSON.stringify(body),
+          });
+          lawCandidates = lawCandidates.filter((c) => c.uid !== uid);
+          renderLaws();
+          setStatus('Loi votée publiée : ' + r.lawId + ' (vérifiée par check-sources au prochain contrôle).', 'ok');
+        } catch (e) {
+          setStatus(e.message, 'err');
+        }
+      }
+
+      async function rejectLaw(uid) {
+        if (!confirm('Rejeter cette loi votée ? Elle ne sera plus proposée.')) return;
+        try {
+          await api('/corpus/' + encodeURIComponent(uid) + '/reject', { method: 'POST' });
+          lawCandidates = lawCandidates.filter((c) => c.uid !== uid);
+          renderLaws();
           setStatus('Candidat rejeté.', 'ok');
         } catch (e) {
           setStatus(e.message, 'err');
@@ -390,6 +596,9 @@
       $('#f-theme').addEventListener('change', render);
       $('#f-search').addEventListener('input', render);
       $('#f-gov').addEventListener('change', render);
+      $('#law-sync').addEventListener('click', syncLaws);
+      $('#lf-theme').addEventListener('change', renderLaws);
+      $('#lf-search').addEventListener('input', renderLaws);
       const saved = sessionStorage.getItem('mx_admin_token');
       if (saved) { $('#token').value = saved; load(); }
     </script>

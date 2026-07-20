@@ -22,7 +22,14 @@ public class ScrutinParser {
 
   /** Scrutin parsé (données brutes, avant agrégation par bloc). */
   public record ParsedScrutin(
-      int numero, int legislature, String titre, String sortCode, List<GroupeVote> groupes) {}
+      String uid,
+      int numero,
+      int legislature,
+      String dateScrutin,
+      String titre,
+      String typeVote,
+      String sortCode,
+      List<GroupeVote> groupes) {}
 
   public ParsedScrutin parse(InputStream json) {
     try {
@@ -30,9 +37,12 @@ public class ScrutinParser {
       if (s.isMissingNode()) {
         throw new IllegalArgumentException("JSON de scrutin invalide : nœud 'scrutin' absent");
       }
+      String uid = s.path("uid").asText();
       int numero = s.path("numero").asInt();
       int legislature = s.path("legislature").asInt();
+      String dateScrutin = s.path("dateScrutin").asText();
       String titre = s.path("titre").asText();
+      String typeVote = s.path("typeVote").path("libelleTypeVote").asText("");
       String sortCode = s.path("sort").path("code").asText();
 
       var groupes = new ArrayList<GroupeVote>();
@@ -49,7 +59,8 @@ public class ScrutinParser {
         throw new IllegalArgumentException(
             "Scrutin n°" + numero + " : aucun groupe dans ventilationVotes");
       }
-      return new ParsedScrutin(numero, legislature, titre, sortCode, groupes);
+      return new ParsedScrutin(
+          uid, numero, legislature, dateScrutin, titre, typeVote, sortCode, groupes);
     } catch (IllegalArgumentException e) {
       throw e;
     } catch (Exception e) {

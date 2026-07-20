@@ -9,10 +9,12 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import javax.sql.DataSource;
 
 /** Accès JDBC aux lois, scrutins et indicateurs publiés (SQLite). */
@@ -125,19 +127,69 @@ public class LawRepository {
       String sourceExpect,
       String textUrl,
       String textExpect) {
+    insertLaw(
+        "upcoming", id, title, category, date, summary, sourceUrl, sourceExpect, textUrl, textExpect);
+  }
+
+  /**
+   * Crée une loi votée {@code passed} publiée à partir d'un scrutin validé (issue #3, tâche 3).
+   * Les votes par bloc sont posés ensuite via {@link #replaceVotes} ; check-sources vérifiera
+   * les URLs scrutin + dossier. Rejette si l'identifiant existe déjà.
+   */
+  public void insertPassed(
+      String id,
+      String title,
+      String category,
+      String date,
+      String summary,
+      String sourceUrl,
+      String sourceExpect,
+      String textUrl,
+      String textExpect) {
+    insertLaw(
+        "passed", id, title, category, date, summary, sourceUrl, sourceExpect, textUrl, textExpect);
+  }
+
+  /** URLs sources de TOUTES les lois (même dépubliées) — pour ne jamais re-proposer un scrutin déjà couvert. */
+  public Set<String> sourceUrls() {
+    var out = new HashSet<String>();
+    try (Connection c = dataSource.getConnection();
+        PreparedStatement ps = c.prepareStatement("SELECT source_url FROM laws");
+        ResultSet rs = ps.executeQuery()) {
+      while (rs.next()) {
+        out.add(rs.getString(1));
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException("Lecture des URLs sources impossible", e);
+    }
+    return out;
+  }
+
+  private void insertLaw(
+      String status,
+      String id,
+      String title,
+      String category,
+      String date,
+      String summary,
+      String sourceUrl,
+      String sourceExpect,
+      String textUrl,
+      String textExpect) {
     execute(
         "INSERT INTO laws (id, title, category, status, date, summary, source_url, source_expect,"
-            + " text_url, text_expect, published) VALUES (?, ?, ?, 'upcoming', ?, ?, ?, ?, ?, ?, 1)",
+            + " text_url, text_expect, published) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)",
         ps -> {
           ps.setString(1, id);
           ps.setString(2, title);
           ps.setString(3, category);
-          ps.setString(4, date);
-          ps.setString(5, summary);
-          ps.setString(6, sourceUrl);
-          ps.setString(7, sourceExpect);
-          ps.setString(8, textUrl);
-          ps.setString(9, textExpect);
+          ps.setString(4, status);
+          ps.setString(5, date);
+          ps.setString(6, summary);
+          ps.setString(7, sourceUrl);
+          ps.setString(8, sourceExpect);
+          ps.setString(9, textUrl);
+          ps.setString(10, textExpect);
         });
   }
 

@@ -1,6 +1,7 @@
 package fr.jrec.meteox.laws.opendata;
 
 import jakarta.enterprise.context.ApplicationScoped;
+import jakarta.inject.Inject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -16,6 +17,7 @@ import java.util.Enumeration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import org.eclipse.microprofile.config.inject.ConfigProperty;
@@ -46,6 +48,8 @@ public class OpenDataScrutins {
   @ConfigProperty(name = "meteox.opendata.refresh-seconds", defaultValue = "3600")
   long refreshSeconds;
 
+  @Inject ScrutinParser parser;
+
   private final HttpClient client =
       HttpClient.newBuilder()
           .connectTimeout(HTTP_TIMEOUT)
@@ -53,6 +57,33 @@ public class OpenDataScrutins {
           .build();
 
   private final Map<Integer, Instant> lastChecked = new ConcurrentHashMap<>();
+
+  /**
+   * Parse chaque scrutin de la législature et le transmet au consommateur (même stratégie que
+   * {@link OpenDataDossiers#forEachDossier}). Un scrutin illisible est ignoré (loggé) sans
+   * interrompre le parcours du reste du jeu.
+   */
+  public void forEachScrutin(int legislature, Consumer<ScrutinParser.ParsedScrutin> consumer)
+      throws IOException, InterruptedException {
+    Path zip = ensureDataset(legislature);
+    int failures = 0;
+    try (ZipFile zf = new ZipFile(zip.toFile())) {
+      for (Enumeration<? extends ZipEntry> e = zf.entries(); e.hasMoreElements(); ) {
+        ZipEntry entry = e.nextElement();
+        if (entry.isDirectory() || !entry.getName().endsWith(".json")) {
+          continue;
+        }
+        try (InputStream in = zf.getInputStream(entry)) {
+          consumer.accept(parser.parse(in));
+        } catch (RuntimeException ex) {
+          failures++;
+        }
+      }
+    }
+    if (failures > 0) {
+      LOG.warnf("%d scrutin(s) ignoré(s) (parsing) sur la législature %d", failures, legislature);
+    }
+  }
 
   /**
    * Contenu JSON du scrutin demandé, extrait du zip de sa législature.

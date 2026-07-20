@@ -85,9 +85,12 @@ class ScrutinExtractionTest {
     svc.mapping = mapping;
     ParsedScrutin scrutin =
         new ParsedScrutin(
+            "VTANR5L17V999",
             999,
             17,
+            "2025-01-01",
             "test",
+            "scrutin public ordinaire",
             "adopté",
             List.of(
                 new GroupeVote("PO845413", 0, 10, 0), // LFI connu → gauche
