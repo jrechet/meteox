@@ -118,6 +118,33 @@ describe('politicsHTML', () => {
     expect(html).toContain('data-lawfilter="pesticides"');
   });
 
+  test("carte à venir : affiche l'étape officielle sourcée, jamais une date fabriquée", () => {
+    const upcoming = {
+      id: 'DLR5L17N53637', title: 'Texte à venir', summary: 'Résumé vérifié.',
+      category: 'eau', status: 'upcoming', stage: 'En navette au Sénat',
+      sourceUrl: 'https://www.assemblee-nationale.fr/dyn/17/dossiers/DLR5L17N53637',
+      textUrl: 'https://www.assemblee-nationale.fr/dyn/17/dossiers/DLR5L17N53637',
+      indicators: { pesticides: 0, partageEau: 1, pognonPuissants: 0, peupleSante: 1 },
+    };
+    const html = politicsHTML(stateWith({ laws: [...LAWS, upcoming] }));
+    expect(html).toContain('pcard--upcoming');
+    // Minuscule initiale enchaînée après « Vote à venir · », et AUCUNE date fabriquée.
+    expect(html).toContain('Vote à venir · en navette au Sénat');
+    expect(html).not.toContain('Invalid Date');
+  });
+
+  test("carte à venir sans étape : repli neutre « en cours d'examen »", () => {
+    const upcoming = {
+      id: 'x', title: 'Texte sans étape', summary: 'Résumé.', category: 'eau', status: 'upcoming',
+      sourceUrl: 'https://www.assemblee-nationale.fr/dyn/17/dossiers/x',
+      textUrl: 'https://www.assemblee-nationale.fr/dyn/17/dossiers/x',
+      indicators: { pesticides: 0, partageEau: 0, pognonPuissants: 0, peupleSante: 0 },
+    };
+    const html = politicsHTML(stateWith({ laws: [upcoming] }));
+    // L'étape est échappée (donnée externe rendue via innerHTML) : l'apostrophe devient &#39;.
+    expect(html).toContain('Vote à venir · en cours d&#39;examen');
+  });
+
   test('shows a discreet freshness indicator for API data', () => {
     const html = politicsHTML(stateWith());
     expect(html).toContain('politics-freshness');

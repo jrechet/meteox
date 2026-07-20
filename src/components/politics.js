@@ -18,6 +18,19 @@ function categoryLabel(cat) {
   return labels[cat] || cat;
 }
 
+/**
+ * Étape officielle d'une carte « à venir », affichée à la place d'une date (jamais fabriquée) :
+ * l'open data ne source aucune date de scrutin à venir. Repli neutre si l'étape manque.
+ * La minuscule initiale s'enchaîne proprement après « Vote à venir · ».
+ * @param {{ stage?: string }} law
+ * @returns {string}
+ */
+function upcomingStageLabel(law) {
+  const stage =
+    typeof law.stage === 'string' && law.stage.trim() ? law.stage.trim() : 'En cours d\'examen';
+  return stage.charAt(0).toLowerCase() + stage.slice(1);
+}
+
 function indicatorMeterHTML(name, val) {
   if (val == null) return '';
   
@@ -196,7 +209,7 @@ export function politicsHTML(state) {
 
   const upcomingCards = upcoming.map(law => `
     <article class="pcard pcard--upcoming">
-      <div class="pcard__badge">Vote à venir · ${new Date(law.date).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}</div>
+      <div class="pcard__badge">Vote à venir · ${escapeHtml(upcomingStageLabel(law))}</div>
       <h4 class="pcard__title">${escapeHtml(law.title)}</h4>
       <p class="pcard__summary">${escapeHtml(law.summary)}</p>
 

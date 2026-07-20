@@ -81,6 +81,12 @@ class DossierSyncServiceTest {
 
   @AfterEach
   void cleanup() throws Exception {
+    // Draine une passe async (POST /sync du test async) encore en vol avant de nettoyer : sinon
+    // elle vide les candidats du test suivant (deleteUnactionedNotIn sur un jeu vide) ou verrouille
+    // son syncAll (garde running), ce qui fait échouer la détection — course inter-tests.
+    for (int i = 0; i < 200 && service.isRunning(); i++) {
+      Thread.sleep(25);
+    }
     try (Connection c = dataSource.getConnection();
         Statement st = c.createStatement()) {
       st.executeUpdate("DELETE FROM dossier_candidates");
@@ -186,19 +192,26 @@ class DossierSyncServiceTest {
     stubDataset(17, zipOf(EAU));
     service.syncAll(); // détecte EAU en candidat
 
-    String lawId =
-        service.promote(EAU, "eau", "2026-09-01", "Résumé éditorial vérifié.", "ressources naturelles");
+    // L'étape officielle est détectée au scan (sourcée), stockée sur le candidat.
+    assertEquals("En commission", candidates.findByUid(EAU).orElseThrow().stage());
+
+    // Promotion SANS date : la carte « à venir » porte l'étape, jamais une date fabriquée.
+    String lawId = service.promote(EAU, "eau", "Résumé éditorial vérifié.", "ressources naturelles");
 
     assertEquals(EAU, lawId);
     var law = laws.findById(EAU).orElseThrow();
     assertTrue(law.published());
     assertEquals("upcoming", law.status());
-    // La carte apparaît maintenant côté public, en statut « à venir ».
+    org.junit.jupiter.api.Assertions.assertNull(law.date(), "une carte à venir n'a pas de date");
+    assertEquals("En commission", law.stage());
+    // La carte apparaît côté public, en « à venir », avec son étape et sans date.
     when()
         .get("/api/laws")
         .then()
         .statusCode(200)
-        .body("findAll { it.status == 'upcoming' }.id", hasItem(EAU));
+        .body("findAll { it.status == 'upcoming' }.id", hasItem(EAU))
+        .body("find { it.id == '" + EAU + "' }.stage", is("En commission"))
+        .body("find { it.id == '" + EAU + "' }.date", org.hamcrest.CoreMatchers.nullValue());
     assertEquals("promoted", candidates.findByUid(EAU).orElseThrow().status());
   }
 
@@ -221,10 +234,10 @@ class DossierSyncServiceTest {
     // Candidat présent mais dossier promulgué (terminated) : impossible à promouvoir en « à venir ».
     candidates.upsert(
         PROMULGUEE, 17, "Dossier clos", "https://x/dossiers/" + PROMULGUEE, "eau", true,
-        "Proposition de loi ordinaire", false);
+        "Proposition de loi ordinaire", false, "Promulguée");
     org.junit.jupiter.api.Assertions.assertThrows(
         IllegalStateException.class,
-        () -> service.promote(PROMULGUEE, "agriculture", "2026-09-01", "x", "x"));
+        () -> service.promote(PROMULGUEE, "agriculture", "x", "x"));
   }
 
   // --- helpers ---

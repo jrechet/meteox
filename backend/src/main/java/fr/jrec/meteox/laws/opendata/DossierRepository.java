@@ -28,9 +28,10 @@ public class DossierRepository {
       boolean projetDeLoi,
       boolean terminated,
       String status,
-      String promotedLawId) {}
+      String promotedLawId,
+      String stage) {}
 
-  /** Insère le candidat ou rafraîchit son titre/procédure/état + last_seen. */
+  /** Insère le candidat ou rafraîchit son titre/procédure/état/étape + last_seen. */
   public void upsert(
       String uid,
       int legislature,
@@ -39,13 +40,15 @@ public class DossierRepository {
       String theme,
       boolean terminated,
       String procedure,
-      boolean projetDeLoi) {
+      boolean projetDeLoi,
+      String stage) {
     execute(
         "INSERT INTO dossier_candidates (uid, legislature, titre, dossier_url, theme, terminated,"
-            + " procedure, projet_de_loi) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            + " procedure, projet_de_loi, stage) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             + " ON CONFLICT(uid) DO UPDATE SET titre = excluded.titre,"
             + " terminated = excluded.terminated, procedure = excluded.procedure,"
-            + " projet_de_loi = excluded.projet_de_loi, last_seen = datetime('now')",
+            + " projet_de_loi = excluded.projet_de_loi, stage = excluded.stage,"
+            + " last_seen = datetime('now')",
         ps -> {
           ps.setString(1, uid);
           ps.setInt(2, legislature);
@@ -55,6 +58,7 @@ public class DossierRepository {
           ps.setInt(6, terminated ? 1 : 0);
           ps.setString(7, procedure);
           ps.setInt(8, projetDeLoi ? 1 : 0);
+          ps.setString(9, stage);
         });
   }
 
@@ -79,7 +83,7 @@ public class DossierRepository {
         PreparedStatement ps =
             c.prepareStatement(
                 "SELECT uid, legislature, titre, dossier_url, theme, procedure, projet_de_loi,"
-                    + " terminated, status, promoted_law_id FROM dossier_candidates"
+                    + " terminated, status, promoted_law_id, stage FROM dossier_candidates"
                     + " WHERE status = ? AND terminated = 0"
                     + " ORDER BY projet_de_loi DESC, last_seen DESC")) {
       ps.setString(1, status);
@@ -155,7 +159,7 @@ public class DossierRepository {
         PreparedStatement ps =
             c.prepareStatement(
                 "SELECT uid, legislature, titre, dossier_url, theme, procedure, projet_de_loi,"
-                    + " terminated, status, promoted_law_id FROM dossier_candidates WHERE uid = ?")) {
+                    + " terminated, status, promoted_law_id, stage FROM dossier_candidates WHERE uid = ?")) {
       ps.setString(1, uid);
       try (ResultSet rs = ps.executeQuery()) {
         return rs.next() ? Optional.of(mapCandidate(rs)) : Optional.empty();
@@ -176,7 +180,8 @@ public class DossierRepository {
         rs.getInt("projet_de_loi") == 1,
         rs.getInt("terminated") == 1,
         rs.getString("status"),
-        rs.getString("promoted_law_id"));
+        rs.getString("promoted_law_id"),
+        rs.getString("stage"));
   }
 
   private void execute(String sql, SqlBinder binder) {
