@@ -1,5 +1,6 @@
 package fr.jrec.meteox.laws.opendata.api;
 
+import fr.jrec.meteox.laws.admin.AdminAuth;
 import fr.jrec.meteox.laws.opendata.DossierSyncService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -9,11 +10,8 @@ import jakarta.ws.rs.POST;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
-import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
-import java.util.Optional;
-import org.eclipse.microprofile.config.inject.ConfigProperty;
 import org.eclipse.microprofile.context.ManagedExecutor;
 
 /**
@@ -27,9 +25,7 @@ public class AdminDossierResource {
 
   @Inject DossierSyncService service;
   @Inject ManagedExecutor executor;
-
-  @ConfigProperty(name = "meteox.admin.token")
-  Optional<String> adminToken;
+  @Inject AdminAuth adminAuth;
 
   /**
    * Candidats détectés en attente de relecture (jamais publics tant que non promus), enrichis de
@@ -38,7 +34,7 @@ public class AdminDossierResource {
   @GET
   @Path("/candidates")
   public Response candidates(@HeaderParam("X-Admin-Token") String token) {
-    requireAdmin(token);
+    adminAuth.require(token);
     return Response.ok(service.candidatesForReview()).build();
   }
 
@@ -49,7 +45,7 @@ public class AdminDossierResource {
   @POST
   @Path("/sync")
   public Response sync(@HeaderParam("X-Admin-Token") String token) {
-    requireAdmin(token);
+    adminAuth.require(token);
     if (service.isRunning()) {
       return Response.ok(new SyncStatus("running")).build();
     }
@@ -65,7 +61,7 @@ public class AdminDossierResource {
       @PathParam("uid") String uid,
       @HeaderParam("X-Admin-Token") String token,
       PromoteRequest request) {
-    requireAdmin(token);
+    adminAuth.require(token);
     if (request == null || request.category() == null || request.date() == null) {
       return Response.status(Response.Status.BAD_REQUEST)
           .entity(new Error("category et date sont requis"))
@@ -86,29 +82,9 @@ public class AdminDossierResource {
   @POST
   @Path("/{uid}/reject")
   public Response reject(@PathParam("uid") String uid, @HeaderParam("X-Admin-Token") String token) {
-    requireAdmin(token);
+    adminAuth.require(token);
     service.reject(uid);
     return Response.noContent().build();
-  }
-
-  private void requireAdmin(String token) {
-    String expected = adminToken.map(String::strip).orElse("");
-    if (expected.isBlank()) {
-      throw new WebApplicationException(
-          Response.status(Response.Status.SERVICE_UNAVAILABLE)
-              .entity(new Error("Admin fermé : meteox.admin.token non configuré"))
-              .build());
-    }
-    if (token == null || !constantTimeEquals(expected, token)) {
-      throw new WebApplicationException(
-          Response.status(Response.Status.UNAUTHORIZED).entity(new Error("Jeton admin invalide")).build());
-    }
-  }
-
-  private static boolean constantTimeEquals(String a, String b) {
-    return java.security.MessageDigest.isEqual(
-        a.getBytes(java.nio.charset.StandardCharsets.UTF_8),
-        b.getBytes(java.nio.charset.StandardCharsets.UTF_8));
   }
 
   record SyncStatus(String status) {}
