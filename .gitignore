@@ -4,3 +4,9 @@ coverage/
 .playwright-mcp/
 *.log
 .DS_Store
+
+# Scripts locaux MyAPI (jamais versionnés)
+/api.sh
+/setup.sh
+/unapi.sh
+/api.world.md
