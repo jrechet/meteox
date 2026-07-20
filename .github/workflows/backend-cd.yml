@@ -65,9 +65,14 @@ jobs:
           MX_PATH_PREFIX: /meteox-laws-int
           MX_CORS_ORIGINS: https://jrechet.github.io,https://jrec.fr
           MX_GITHUB_TOKEN: ${{ secrets.MX_GITHUB_TOKEN }}
-          # Secret optionnel : sans lui l'admin reste fermé (503). À créer côté GitHub pour
-          # activer la validation humaine des candidats dossiers / indicateurs.
+          # Jeton admin de secours / automatisation (la voie principale humaine est GitHub OAuth).
           MX_ADMIN_TOKEN: ${{ secrets.MX_ADMIN_TOKEN }}
+          # Connexion GitHub OAuth de l'admin. Passer à "true" une fois les deux secrets créés
+          # (MX_GITHUB_OAUTH_CLIENT_ID / _SECRET) pour activer la mire de login GitHub.
+          MX_OIDC_ENABLED: "false"
+          MX_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.MX_GITHUB_OAUTH_CLIENT_ID }}
+          MX_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.MX_GITHUB_OAUTH_CLIENT_SECRET }}
+          MX_ADMIN_GITHUB_LOGINS: jrechet
         run: docker stack up --detach=true -c docker-compose.yml mxlawsint
 
   verify-int:
