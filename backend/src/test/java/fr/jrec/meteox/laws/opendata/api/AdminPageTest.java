@@ -12,11 +12,13 @@ class AdminPageTest {
 
   @Test
   void admin_page_is_served() {
+    // La base API est composée dans le JS : 'api/admin' + '/dossiers/…' ou '/corpus/…'.
     get("/admin.html")
         .then()
         .statusCode(200)
         .body(containsString("validation des dossiers"))
-        .body(containsString("api/admin/dossiers"));
+        .body(containsString("api/admin"))
+        .body(containsString("/dossiers/"));
   }
 
   @Test
@@ -28,5 +30,20 @@ class AdminPageTest {
         .body(containsString("id=\"f-gov\""))
         .body(containsString("data-gov"))
         .body(containsString("data-procedure"));
+  }
+
+  @Test
+  void admin_page_exposes_corpus_section() {
+    // Section « lois votées candidates » (issue #3, tâche 3) : liste, filtre, sync, promotion
+    // avec dossier officiel requis (URL + fragment) — branchée sur /api/admin/corpus.
+    get("/admin.html")
+        .then()
+        .statusCode(200)
+        .body(containsString("lois votées candidates"))
+        .body(containsString("id=\"law-tpl\""))
+        .body(containsString("id=\"law-sync\""))
+        .body(containsString("id=\"lf-theme\""))
+        .body(containsString("data-f=\"textUrl\""))
+        .body(containsString("/corpus/"));
   }
 }

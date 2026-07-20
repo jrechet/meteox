@@ -116,11 +116,13 @@ class ActeurReferentielTest {
 
   @Test
   void null_bloc_when_organe_ref_absent_from_bloc_mapping() {
-    // Éric Ciotti → UDDPLR (PO872880), organeRef absent d'organe-blocs.json → groupe résolu, bloc nul.
-    GroupeAffiliation g = referentiel.groupeDe("PA330240").orElseThrow();
+    // Groupe synthétique ZZZ (PO000001) volontairement absent d'organe-blocs.json → groupe
+    // résolu (sigle + organeRef), mais bloc nul. On utilise un organe fictif pour que ce cas
+    // reste stable même quand un vrai organe (ex. PO872880/UDR) rejoint le mapping.
+    GroupeAffiliation g = referentiel.groupeDe("PA000001").orElseThrow();
 
-    assertEquals("UDDPLR", g.sigle());
-    assertEquals("PO872880", g.organeRef());
+    assertEquals("ZZZ", g.sigle());
+    assertEquals("PO000001", g.organeRef());
     assertNull(g.bloc(), "bloc doit être nul quand l'organeRef n'est pas mappé");
   }
 
@@ -136,10 +138,10 @@ class ActeurReferentielTest {
   /** Zip AMO30 en mémoire : entrées json/acteur/PA*.json et json/organe/PO*.json (comme le zip AN). */
   private static byte[] amoZip() throws Exception {
     var entries = new LinkedHashMap<String, byte[]>();
-    for (String uid : new String[] {"PA721474", "PA1008", "PA1001", "PA330240"}) {
+    for (String uid : new String[] {"PA721474", "PA1008", "PA1001", "PA330240", "PA000001"}) {
       entries.put("json/acteur/" + uid + ".json", fixture("acteurs/" + uid + ".json"));
     }
-    for (String uid : new String[] {"PO845485", "PO845419", "PO872880"}) {
+    for (String uid : new String[] {"PO845485", "PO845419", "PO872880", "PO000001"}) {
       entries.put("json/organe/" + uid + ".json", fixture("organes/" + uid + ".json"));
     }
     var out = new ByteArrayOutputStream();

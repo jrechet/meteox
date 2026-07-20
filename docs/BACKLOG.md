@@ -35,12 +35,12 @@
 | Issue | Domaine métier | Dépend de | État |
 |---|---|---|---|
 | [#2 — Backend Quarkus + SQLite (socle données lois, jrec.fr)](https://github.com/jrechet/meteox/issues/2) | Infrastructure données | — | ✅ Fermée (2026-07-16) — API int : `https://jrec.fr/meteox-laws-int` |
-| [#3 — Pipeline open data AN (scrutins réels & prochains scrutins)](https://github.com/jrechet/meteox/issues/3) | Données législatives | #2 | 🟡 Tâches 1 (extract-scrutins) + 2 (sync-dossiers) livrées et déployées ; reste corpus élargi (t3), note Sénat (t4) |
+| [#3 — Pipeline open data AN (scrutins réels & prochains scrutins)](https://github.com/jrechet/meteox/issues/3) | Données législatives | #2 | 🟡 Tâches 1 (extract-scrutins) + 2 (sync-dossiers) livrées et déployées ; t3 (corpus élargi : `sync-corpus` + validation humaine, 29 candidats sur 2023-2026) livrée côté backend ; reste note Sénat (t4) |
 | [#4 — Module indicateurs IA multi-backend + méthodologie transparente](https://github.com/jrechet/meteox/issues/4) | Scoring éditorial | #2 | ✅ Fermée (2026-07-17) — UI « Pourquoi ces scores ? » (PR #22) |
 | [#5 — Front branché sur l'API avec snapshot de fallback](https://github.com/jrechet/meteox/issues/5) | Frontend données | #2 | ✅ Fermée (2026-07-17) — API + snapshot (PR #21), plus de données en dur |
 | [#6 — Qualité éditoriale & accessibilité de l'onglet Lois](https://github.com/jrechet/meteox/issues/6) | Éditorial / a11y | — | ✅ Fermée |
 
-**Reste à faire** (2026-07-17) : #3 tâches 2-4 — `sync-dossiers` (cartes `upcoming` 17e), élargissement du corpus avec file de validation humaine (`draft`), note d'architecture Sénat. Contexte de reprise détaillé en commentaire de l'issue. Carte des dépendances externes : [DEPENDENCIES.md](DEPENDENCIES.md).
+**Reste à faire** (2026-07-18) : #3 tâche 4 — note d'architecture Sénat. Les tâches 2 (`sync-dossiers`) et 3 (corpus élargi : `sync-corpus`, staging `law_candidates`, admin « Lois votées candidates », 29 candidats détectés sur 2023-2026) sont livrées côté backend. Contexte de reprise détaillé en commentaire de l'issue. Carte des dépendances externes : [DEPENDENCIES.md](DEPENDENCIES.md).
 
 ## Hors backlog (non planifié)
 

@@ -9,12 +9,13 @@ import static org.hamcrest.Matchers.hasItems;
 import fr.jrec.meteox.laws.opendata.DossierRepository;
 import fr.jrec.meteox.laws.opendata.DossierSignataireRepository;
 import fr.jrec.meteox.laws.opendata.DossierSignataireRepository.Signataire;
+import fr.jrec.meteox.laws.opendata.DossierSyncService;
 import io.quarkus.test.junit.QuarkusTest;
-import java.util.List;
 import io.restassured.specification.RequestSpecification;
 import jakarta.inject.Inject;
 import java.sql.Connection;
 import java.sql.Statement;
+import java.util.List;
 import javax.sql.DataSource;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -34,10 +35,16 @@ class AdminDossierApiTest {
 
   @Inject DossierRepository candidates;
   @Inject DossierSignataireRepository signataires;
+  @Inject DossierSyncService syncService;
   @Inject DataSource dataSource;
 
   @AfterEach
   void cleanup() throws Exception {
+    // Draine la passe async du POST /sync avant de rendre la main : un download de fond encore
+    // en cours écrirait dans le cache disque partagé qu'un autre test efface → course.
+    for (int i = 0; i < 200 && syncService.isRunning(); i++) {
+      Thread.sleep(25);
+    }
     try (Connection c = dataSource.getConnection();
         Statement st = c.createStatement()) {
       st.executeUpdate("DELETE FROM dossier_signataires WHERE dossier_uid LIKE 'DLR5L17N9%'");
