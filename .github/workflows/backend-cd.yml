@@ -112,18 +112,25 @@ jobs:
           #    l'ordonnancement multi-nœuds du swarm — contrairement à une sonde docker locale
           #    qui suppose que la tâche tourne sur le nœud du runner. Retries généreux : pull
           #    d'image, 1re émission du certificat Let's Encrypt, bascule rolling-update.
-          for i in $(seq 1 30); do
+          # Health ET CORS validés dans LA MÊME boucle de retry : pendant la bascule stop-first
+          # (démarrage ~30 s avec OIDC), health peut répondre 200 une fraction de seconde avant
+          # que /api/laws ne soit routé — un contrôle CORS non réessayé échouait à tort. On ne
+          # sort en échec qu'après avoir épuisé les tentatives, jamais sur un transitoire.
+          for i in $(seq 1 40); do
             if curl -fsS -m 10 "$BASE/api/health" >/dev/null 2>&1; then
               acao=$(curl -fsS -m 10 -o /dev/null -D - \
-                       -H "Origin: https://jrechet.github.io" "$BASE/api/laws" \
+                       -H "Origin: https://jrechet.github.io" "$BASE/api/laws" 2>/dev/null \
                        | grep -i "access-control-allow-origin" || true)
-              echo "accès externe OK (tentative $i) ; CORS: ${acao:-<absent>}"
-              echo "$acao" | grep -qi "jrechet.github.io" || { echo "::error::CORS externe KO"; dump; exit 1; }
-              exit 0
+              if echo "$acao" | grep -qi "jrechet.github.io"; then
+                echo "accès externe + CORS OK (tentative $i) ; CORS: $acao"
+                exit 0
+              fi
+              echo "[$i] health OK mais CORS pas encore prêt (${acao:-<absent>})…"
+            else
+              echo "[$i] pas encore joignable (pull image / cert LE / bascule)…"
             fi
-            echo "[$i] pas encore joignable (pull image / cert LE / bascule)…"
             sleep 10
           done
-          echo "::error::API injoignable via $BASE après retries"
+          echo "::error::API/CORS non validés via $BASE après retries"
           dump
           exit 1
