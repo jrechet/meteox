@@ -81,6 +81,12 @@ class DossierSyncServiceTest {
 
   @AfterEach
   void cleanup() throws Exception {
+    // Draine une passe async (POST /sync du test async) encore en vol avant de nettoyer : sinon
+    // elle vide les candidats du test suivant (deleteUnactionedNotIn sur un jeu vide) ou verrouille
+    // son syncAll (garde running), ce qui fait échouer la détection — course inter-tests.
+    for (int i = 0; i < 200 && service.isRunning(); i++) {
+      Thread.sleep(25);
+    }
     try (Connection c = dataSource.getConnection();
         Statement st = c.createStatement()) {
       st.executeUpdate("DELETE FROM dossier_candidates");
