@@ -138,19 +138,21 @@
     <header>
       <h1>meteox · validation des dossiers</h1>
       <span class="sub">« Prochains scrutins » — promotion des candidats vérifiés</span>
+      <a id="logout" href="q/oidc/logout" style="margin-left:auto;font-size:0.82rem;">Se déconnecter</a>
     </header>
     <main>
       <div class="card" id="auth">
         <div class="row">
           <div class="grow">
-            <label for="token">Jeton admin (X-Admin-Token)</label>
-            <input id="token" type="password" autocomplete="off" placeholder="MX_ADMIN_TOKEN" />
+            <label for="token">Jeton admin (optionnel — sinon connexion GitHub)</label>
+            <input id="token" type="password" autocomplete="off" placeholder="laisser vide si connecté via GitHub" />
           </div>
           <button id="load">Charger les candidats</button>
           <button id="sync" class="ghost" title="Relance la détection depuis l'open data (peut prendre ~1 min)">Synchroniser maintenant</button>
         </div>
         <p class="muted" style="margin:0.6rem 0 0;font-size:0.8rem;">
-          Le jeton reste dans cet onglet (sessionStorage) et n'est jamais envoyé ailleurs qu'à l'API meteox.
+          Connecté via GitHub, aucun jeton n'est nécessaire. Le jeton (secours / automatisation) reste
+          dans cet onglet (sessionStorage) et n'est jamais envoyé ailleurs qu'à l'API meteox.
         </p>
       </div>
 
@@ -415,8 +417,8 @@
       }
 
       async function load() {
-        if (!token()) return setStatus('Saisis le jeton admin.', 'err');
-        sessionStorage.setItem('mx_admin_token', token());
+        // Auth par la session GitHub (cookie même-origine) OU par le jeton s'il est saisi.
+        if (token()) sessionStorage.setItem('mx_admin_token', token());
         setStatus('Chargement…');
         try {
           candidates = await api('/dossiers/candidates');
@@ -434,7 +436,6 @@
       }
 
       async function sync() {
-        if (!token()) return setStatus('Saisis le jeton admin.', 'err');
         try {
           const r = await api('/dossiers/sync', { method: 'POST' });
           if (r && r.status === 'running') {
@@ -548,7 +549,6 @@
       }
 
       async function syncLaws() {
-        if (!token()) return setStatus('Saisis le jeton admin.', 'err');
         try {
           const r = await api('/corpus/sync', { method: 'POST' });
           if (r && r.status === 'running') {
@@ -599,8 +599,11 @@
       $('#law-sync').addEventListener('click', syncLaws);
       $('#lf-theme').addEventListener('change', renderLaws);
       $('#lf-search').addEventListener('input', renderLaws);
+      // Au chargement : on tente directement (la session GitHub authentifie sans jeton). Un jeton
+      // mémorisé est repré-rempli pour la voie de secours ; en cas de 401, un message invite à agir.
       const saved = sessionStorage.getItem('mx_admin_token');
-      if (saved) { $('#token').value = saved; load(); }
+      if (saved) $('#token').value = saved;
+      load();
     </script>
   </body>
 </html>

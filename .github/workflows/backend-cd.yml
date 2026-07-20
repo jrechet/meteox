@@ -67,10 +67,10 @@ jobs:
           MX_GITHUB_TOKEN: ${{ secrets.MX_GITHUB_TOKEN }}
           # Jeton admin de secours / automatisation (la voie principale humaine est GitHub OAuth).
           MX_ADMIN_TOKEN: ${{ secrets.MX_ADMIN_TOKEN }}
-          # Connexion GitHub OAuth de l'admin. Passer à "true" une fois les deux secrets créés
-          # (MX_GITHUB_OAUTH_CLIENT_ID / _SECRET) pour activer la mire de login GitHub.
-          MX_OIDC_ENABLED: "false"
-          MX_GITHUB_OAUTH_CLIENT_ID: ${{ secrets.MX_GITHUB_OAUTH_CLIENT_ID }}
+          # Connexion GitHub OAuth de l'admin — ACTIVE (mire de login GitHub).
+          MX_OIDC_ENABLED: "true"
+          # Client ID public (apparaît dans les URL de redirection) → pas un secret.
+          MX_GITHUB_OAUTH_CLIENT_ID: Ov23li46I27ud7RciSMj
           MX_GITHUB_OAUTH_CLIENT_SECRET: ${{ secrets.MX_GITHUB_OAUTH_CLIENT_SECRET }}
           MX_ADMIN_GITHUB_LOGINS: jrechet
         run: docker stack up --detach=true -c docker-compose.yml mxlawsint
