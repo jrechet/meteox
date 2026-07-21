@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-07-21T15:24:09Z",
+  "generatedAt": "2026-07-16T23:09:25Z",
   "laws": [
     {
       "id": "eco-agri-1",
@@ -39,10 +39,6 @@
           "against": 0,
           "for": 0
         }
-      },
-      "senat": {
-        "hasPublicScrutin": false,
-        "reason": "Voté à main levée — pas de scrutin public au Sénat"
       }
     },
     {
@@ -82,35 +78,6 @@
           "abstained": 0,
           "against": 87,
           "for": 0
-        }
-      },
-      "senat": {
-        "hasPublicScrutin": true,
-        "session": 2022,
-        "numero": 125,
-        "scrutinUrl": "https://www.senat.fr/scrutin-public/2022/scr2022-125.html",
-        "scrutinDate": "2023-02-07",
-        "votes": {
-          "gauche": {
-            "abstained": 27,
-            "against": 0,
-            "for": 64
-          },
-          "milieu": {
-            "abstained": 0,
-            "against": 0,
-            "for": 38
-          },
-          "droite": {
-            "abstained": 3,
-            "against": 13,
-            "for": 184
-          },
-          "extremeDroite": {
-            "abstained": 0,
-            "against": 0,
-            "for": 0
-          }
         }
       }
     },
@@ -152,35 +119,6 @@
           "against": 0,
           "for": 47
         }
-      },
-      "senat": {
-        "hasPublicScrutin": true,
-        "session": 2023,
-        "numero": 3,
-        "scrutinUrl": "https://www.senat.fr/scrutin-public/2023/scr2023-3.html",
-        "scrutinDate": "2023-10-11",
-        "votes": {
-          "gauche": {
-            "abstained": 82,
-            "against": 17,
-            "for": 0
-          },
-          "milieu": {
-            "abstained": 0,
-            "against": 0,
-            "for": 40
-          },
-          "droite": {
-            "abstained": 1,
-            "against": 0,
-            "for": 186
-          },
-          "extremeDroite": {
-            "abstained": 0,
-            "against": 0,
-            "for": 1
-          }
-        }
       }
     },
     {
@@ -220,35 +158,6 @@
           "abstained": 0,
           "against": 0,
           "for": 137
-        }
-      },
-      "senat": {
-        "hasPublicScrutin": true,
-        "session": 2024,
-        "numero": 211,
-        "scrutinUrl": "https://www.senat.fr/scrutin-public/2024/scr2024-211.html",
-        "scrutinDate": "2025-02-20",
-        "votes": {
-          "gauche": {
-            "abstained": 0,
-            "against": 99,
-            "for": 0
-          },
-          "milieu": {
-            "abstained": 0,
-            "against": 1,
-            "for": 36
-          },
-          "droite": {
-            "abstained": 0,
-            "against": 0,
-            "for": 188
-          },
-          "extremeDroite": {
-            "abstained": 0,
-            "against": 0,
-            "for": 0
-          }
         }
       }
     }
