@@ -93,6 +93,79 @@ function voteGroupHTML(partyName, votes) {
   `;
 }
 
+// Groupes politiques agrégés en 4 blocs (donnée backend). Les libellés de partis diffèrent
+// selon la chambre : l'AN garde ses groupes détaillés, le Sénat reste en blocs génériques
+// (les groupes sénatoriaux ne sont pas fabriqués ici — seule l'appartenance au bloc l'est côté API).
+const AN_GROUPS = [
+  ['gauche', 'Gauche (NFP/LFI/PS/EELV)'],
+  ['milieu', 'Centre (EPR/MoDem/Horizons)'],
+  ['droite', 'Droite (DR/LR)'],
+  ['extremeDroite', 'Extrême Droite (RN/UDR)'],
+];
+const SENAT_GROUPS = [
+  ['gauche', 'Gauche'],
+  ['milieu', 'Centre'],
+  ['droite', 'Droite'],
+  ['extremeDroite', 'Extrême droite'],
+];
+
+/** Les 4 blocs de votes d'une chambre (barres + agrégats) — rendu strictement identique AN/Sénat. */
+function voteBlocsHTML(votes, groups) {
+  return groups.map(([key, label]) => voteGroupHTML(label, votes?.[key])).join('');
+}
+
+/**
+ * Une facette « chambre » : sous-titre de chambre + les 4 blocs de votes, avec un pied
+ * optionnel (date + lien officiel côté Sénat). Réutilisée pour l'Assemblée et le Sénat afin
+ * qu'on comprenne d'un coup d'œil que deux chambres se sont prononcées.
+ */
+function chamberFacetHTML(chamberLabel, votes, groups, footer = '') {
+  return `
+    <div class="chamber-vote">
+      <p class="chamber-vote__title">${escapeHtml(chamberLabel)}</p>
+      ${voteBlocsHTML(votes, groups)}
+      ${footer}
+    </div>
+  `;
+}
+
+/**
+ * 2ᵉ facette « Au Sénat » — 3 formes exclusives renvoyées par l'API (météo Sénat) :
+ *  1. scrutin public : mêmes barres/agrégats par bloc que l'AN + date + lien officiel (traçabilité) ;
+ *  2. voté à main levée : mention claire (pas de scrutin public) ;
+ *  3. non résolu (champ absent) : rien.
+ * Toute donnée externe (reason, URL, date) passe par escapeHtml/safeUrl.
+ */
+function senatFacetHTML(senat) {
+  if (!senat || typeof senat !== 'object') return ''; // forme 3 : absent → rien
+
+  if (senat.hasPublicScrutin === false) {
+    // forme 2 : voté à main levée — pas de scrutin public au Sénat.
+    const reason =
+      typeof senat.reason === 'string' && senat.reason.trim()
+        ? senat.reason
+        : 'Voté à main levée — pas de scrutin public au Sénat';
+    return `
+      <div class="chamber-vote chamber-vote--note">
+        <p class="chamber-vote__title">Au Sénat</p>
+        <p class="chamber-vote__note">${escapeHtml(reason)}</p>
+      </div>
+    `;
+  }
+
+  // forme 1 : scrutin public trouvé → mêmes barres + date + lien vers la page officielle.
+  const dateLabel = senat.scrutinDate
+    ? `Scrutin du ${new Date(senat.scrutinDate).toLocaleDateString('fr-FR')}`
+    : 'Scrutin public';
+  const footer = `
+    <p class="chamber-vote__source">
+      <span>${escapeHtml(dateLabel)}</span>
+      <a href="${escapeHtml(safeUrl(senat.scrutinUrl))}" target="_blank" rel="noopener" class="pcard__link pcard__link--sm">Scrutin Sénat officiel ↗</a>
+    </p>
+  `;
+  return chamberFacetHTML('Au Sénat', senat.votes, SENAT_GROUPS, footer);
+}
+
 const INDICATOR_LABELS = {
   pesticides: 'Pesticides',
   partageEau: "Partage de l'eau",
@@ -256,10 +329,8 @@ export function politicsHTML(state) {
             <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--against"></span> Contre (C)</span>
             <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--abstained"></span> Abstention</span>
           </div>
-          ${voteGroupHTML('Gauche (NFP/LFI/PS/EELV)', law.votes?.gauche)}
-          ${voteGroupHTML('Centre (EPR/MoDem/Horizons)', law.votes?.milieu)}
-          ${voteGroupHTML('Droite (DR/LR)', law.votes?.droite)}
-          ${voteGroupHTML('Extrême Droite (RN/UDR)', law.votes?.extremeDroite)}
+          ${chamberFacetHTML('À l\'Assemblée nationale', law.votes, AN_GROUPS)}
+          ${senatFacetHTML(law.senat)}
         </div>
       </div>
 

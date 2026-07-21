@@ -63,6 +63,41 @@ describe('isValidLaw', () => {
     expect(isValidLaw({ ...base, status: 'upcoming' })).toBe(false);
     expect(isValidLaw({ ...base, status: 'upcoming', stage: '   ' })).toBe(false);
   });
+
+  // Facette Sénat (2ᵉ facette) : optionnelle — mais si présente, elle doit être bien formée.
+  const senatScrutin = {
+    hasPublicScrutin: true,
+    scrutinUrl: 'https://www.senat.fr/scrutin-public/2022/scr2022-125.html',
+    scrutinDate: '2023-02-07',
+    votes: {
+      gauche: { for: 64, against: 0, abstained: 27 }, milieu: { for: 38, against: 0, abstained: 0 },
+      droite: { for: 184, against: 13, abstained: 3 }, extremeDroite: { for: 0, against: 0, abstained: 0 },
+    },
+  };
+  test('accepte une loi sans facette senat (senat optionnel)', () => {
+    expect(isValidLaw(good)).toBe(true);
+    expect(good.senat).toBeUndefined();
+  });
+  test('accepte un senat forme 1 (scrutin public : 4 blocs + scrutinUrl https)', () => {
+    expect(isValidLaw({ ...good, senat: senatScrutin })).toBe(true);
+  });
+  test('accepte un senat forme 2 (voté à main levée : reason non vide)', () => {
+    const mainLevee = { hasPublicScrutin: false, reason: 'Voté à main levée — pas de scrutin public au Sénat' };
+    expect(isValidLaw({ ...good, senat: mainLevee })).toBe(true);
+  });
+  test('rejette un senat forme 2 sans reason (ou reason vide)', () => {
+    expect(isValidLaw({ ...good, senat: { hasPublicScrutin: false } })).toBe(false);
+    expect(isValidLaw({ ...good, senat: { hasPublicScrutin: false, reason: '   ' } })).toBe(false);
+  });
+  test('rejette un senat forme 1 mal formé (blocs manquants ou URL non https)', () => {
+    const { extremeDroite, ...partialVotes } = senatScrutin.votes;
+    expect(isValidLaw({ ...good, senat: { ...senatScrutin, votes: partialVotes } })).toBe(false);
+    expect(isValidLaw({ ...good, senat: { ...senatScrutin, scrutinUrl: 'javascript:alert(1)' } })).toBe(false);
+  });
+  test('rejette un senat sans hasPublicScrutin booléen', () => {
+    expect(isValidLaw({ ...good, senat: { reason: 'x' } })).toBe(false);
+    expect(isValidLaw({ ...good, senat: {} })).toBe(false);
+  });
 });
 
 describe('politicsHTML — robustesse au rendu', () => {
