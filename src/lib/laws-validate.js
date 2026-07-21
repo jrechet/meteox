@@ -23,6 +23,24 @@ function isBlocVotes(v) {
 }
 
 /**
+ * Facette Sénat (météo Sénat, 2ᵉ facette de carte) — OPTIONNELLE : une loi sans `senat` reste
+ * valide. Si présente, elle doit être exploitable par le rendu, sinon on préfère la rejeter :
+ *  - `hasPublicScrutin` est un booléen ;
+ *  - si true  → `votes` avec les 4 blocs (for/against/abstained ≥ 0) + `scrutinUrl` https ;
+ *  - si false → `reason` non vide (voté à main levée).
+ */
+export function isValidSenat(s) {
+  if (s == null || typeof s !== 'object') return false;
+  if (typeof s.hasPublicScrutin !== 'boolean') return false;
+  if (s.hasPublicScrutin) {
+    if (!isHttpsUrl(s.scrutinUrl)) return false;
+    if (s.votes == null || typeof s.votes !== 'object') return false;
+    return BLOCS.every((b) => isBlocVotes(s.votes[b]));
+  }
+  return typeof s.reason === 'string' && s.reason.trim() !== '';
+}
+
+/**
  * Vrai si `l` est une loi exploitable par le rendu. Deux formes valides :
  *  - `passed` : DOIT porter une vraie date de scrutin (YYYY-MM-DD) et ses 4 blocs de votes (la
  *    carte les déréférence) — c'est le bug que cette validation ferme.
@@ -47,5 +65,7 @@ export function isValidLaw(l) {
     // upcoming : l'étape officielle remplace la date (jamais de date fabriquée).
     if (typeof l.stage !== 'string' || l.stage.trim() === '') return false;
   }
+  // Facette Sénat optionnelle : absente → loi valide ; présente → forme vérifiée.
+  if (l.senat !== undefined && !isValidSenat(l.senat)) return false;
   return true;
 }

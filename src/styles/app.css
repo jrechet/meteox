@@ -1380,6 +1380,55 @@ footer.foot {
   white-space: nowrap;
 }
 
+/* Facettes par chambre : « À l'Assemblée nationale » puis « Au Sénat » (2ᵉ facette). */
+.chamber-vote + .chamber-vote {
+  margin-top: var(--space-3);
+  padding-top: var(--space-3);
+  border-top: 1px dashed var(--color-line-strong);
+}
+
+.chamber-vote__title {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  margin: 0 0 0.5rem 0;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chamber-vote__title::before {
+  content: '⚖';
+  font-size: 0.85em;
+  color: var(--color-accent-ink);
+}
+
+/* Forme 2 : voté à main levée — mention honnête, pas de barres. */
+.chamber-vote__note {
+  margin: 0;
+  font-size: var(--text-xs);
+  font-style: italic;
+  color: var(--color-ink-faint);
+  line-height: 1.4;
+}
+
+/* Forme 1 : date du scrutin + lien vers la page officielle du Sénat (traçabilité). */
+.chamber-vote__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.6rem;
+  margin: 0.5rem 0 0 0;
+  font-size: var(--text-xs);
+  color: var(--color-ink-faint);
+}
+
+.pcard__link--sm {
+  font-size: var(--text-xs);
+}
+
 .pcard__actions {
   display: flex;
   align-items: center;

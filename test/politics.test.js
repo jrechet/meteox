@@ -194,3 +194,87 @@ describe('politicsHTML', () => {
     expect(citizenActionIcon).toContain('<svg');
   });
 });
+
+describe('politicsHTML — 2ᵉ facette « Au Sénat »', () => {
+  // Loi votée minimale et contrôlée : on maîtrise la facette senat des 3 formes.
+  const passedLaw = (senat) => ({
+    id: 'sen-test', title: 'Loi test Sénat', summary: 'Résumé vérifié.',
+    category: 'eau', status: 'passed', date: '2024-04-04',
+    sourceUrl: 'https://www.assemblee-nationale.fr/dyn/17/scrutins/1',
+    textUrl: 'https://www.assemblee-nationale.fr/dyn/17/dossiers/D1',
+    indicators: { pesticides: 0, partageEau: 1, pognonPuissants: 0, peupleSante: 1 },
+    votes: {
+      gauche: { for: 1, against: 160, abstained: 0 }, milieu: { for: 30, against: 0, abstained: 0 },
+      droite: { for: 90, against: 0, abstained: 0 }, extremeDroite: { for: 40, against: 0, abstained: 0 },
+    },
+    ...(senat === undefined ? {} : { senat }),
+  });
+  const render = (senat) =>
+    politicsHTML({
+      lawFilter: 'all', laws: [passedLaw(senat)],
+      lawsMeta: { source: 'api', dataDate: '2026-07-17T06:00:00Z' },
+    });
+
+  const scrutin = {
+    hasPublicScrutin: true, session: 2022, numero: 125,
+    scrutinUrl: 'https://www.senat.fr/scrutin-public/2022/scr2022-125.html',
+    scrutinDate: '2023-02-07',
+    votes: {
+      gauche: { for: 64, against: 0, abstained: 27 }, milieu: { for: 38, against: 0, abstained: 0 },
+      droite: { for: 184, against: 13, abstained: 3 }, extremeDroite: { for: 0, against: 0, abstained: 0 },
+    },
+  };
+
+  test('sous-titre les deux chambres (une carte = 2 facettes)', () => {
+    const html = render(scrutin);
+    expect(html).toContain("À l&#39;Assemblée nationale");
+    expect(html).toContain('Au Sénat');
+  });
+
+  test('forme 1 (scrutin public) : blocs Sénat + date + lien vers la page officielle', () => {
+    const html = render(scrutin);
+    // Blocs de votes Sénat (mêmes barres) : agrégats officiels exposés en sr-only.
+    expect(html).toContain('Gauche : 64 pour, 0 contre, 27 abstentions.');
+    expect(html).toContain('Droite : 184 pour, 13 contre, 3 abstentions.');
+    // Date du scrutin (jamais fabriquée) + lien officiel senat.fr (traçabilité, Golden Rule).
+    expect(html).toContain('Scrutin du 07/02/2023');
+    expect(html).toContain('href="https://www.senat.fr/scrutin-public/2022/scr2022-125.html"');
+    expect(html).toContain('Scrutin Sénat officiel');
+    expect(html).toMatch(/rel="noopener"/);
+  });
+
+  test('forme 2 (main levée) : mention claire, pas de scrutin public', () => {
+    const html = render({
+      hasPublicScrutin: false,
+      reason: 'Voté à main levée — pas de scrutin public au Sénat',
+    });
+    expect(html).toContain('Au Sénat');
+    expect(html).toContain('Voté à main levée — pas de scrutin public au Sénat');
+    expect(html).toContain('chamber-vote--note');
+  });
+
+  test('forme 3 (senat absent) : aucune facette Sénat rendue', () => {
+    const html = render(undefined);
+    expect(html).not.toContain('Au Sénat');
+    expect(html).not.toContain('chamber-vote--note');
+    // La facette AN reste, elle, bien présente.
+    expect(html).toContain("À l&#39;Assemblée nationale");
+  });
+
+  test('échappe/neutralise toute donnée Sénat externe (anti-XSS)', () => {
+    const html = render({
+      hasPublicScrutin: true,
+      scrutinUrl: 'javascript:alert(1)',
+      scrutinDate: '2023-02-07',
+      votes: scrutin.votes,
+    });
+    expect(html).not.toContain('javascript:alert(1)');
+    expect(html).toContain('href="#"'); // URL dangereuse neutralisée par safeUrl
+    const evil = render({
+      hasPublicScrutin: false,
+      reason: '<img src=x onerror=alert(1)>',
+    });
+    expect(evil).not.toContain('<img src=x');
+    expect(evil).toContain('&lt;img src=x');
+  });
+});
