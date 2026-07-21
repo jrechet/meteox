@@ -13,7 +13,7 @@ import java.util.Map;
  */
 @JsonPropertyOrder({
   "id", "title", "category", "status", "date", "summary",
-  "sourceUrl", "sourceExpect", "textUrl", "textExpect", "stage", "indicators", "votes"
+  "sourceUrl", "sourceExpect", "textUrl", "textExpect", "stage", "indicators", "votes", "senat"
 })
 public record Law(
     String id,
@@ -29,4 +29,5 @@ public record Law(
     @JsonInclude(JsonInclude.Include.NON_NULL) String stage,
     Map<String, Number> indicators,
     Map<String, BlocVotes> votes,
+    @JsonInclude(JsonInclude.Include.NON_NULL) SenatFacet senat,
     @JsonIgnore boolean published) {}
