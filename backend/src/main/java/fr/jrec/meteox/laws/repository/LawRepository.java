@@ -2,6 +2,7 @@ package fr.jrec.meteox.laws.repository;
 
 import fr.jrec.meteox.laws.model.BlocVotes;
 import fr.jrec.meteox.laws.model.Law;
+import fr.jrec.meteox.laws.model.SenatFacet;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import java.sql.Connection;
@@ -250,6 +251,7 @@ public class LawRepository {
         rs.getString("stage"),
         loadIndicators(c, id),
         loadVotes(c, id),
+        loadSenat(c, id),
         rs.getInt("published") == 1);
   }
 
@@ -296,6 +298,60 @@ public class LawRepository {
       }
     }
     return ordered;
+  }
+
+  /**
+   * Facette Sénat d'une loi (extension Sénat, issue #3, tâche 4). {@code null} = loi non résolue
+   * (aucune ligne {@code senat_lois}) → champ {@code senat} absent du JSON. Sinon : scrutin public
+   * (has=1, votes par bloc depuis {@code scrutins_senat}) ou « voté à main levée » (has=0, motif).
+   */
+  private SenatFacet loadSenat(Connection c, String lawId) throws SQLException {
+    boolean hasScrutin;
+    String reason;
+    try (PreparedStatement ps =
+        c.prepareStatement("SELECT has_public_scrutin, reason FROM senat_lois WHERE law_id = ?")) {
+      ps.setString(1, lawId);
+      try (ResultSet rs = ps.executeQuery()) {
+        if (!rs.next()) {
+          return null;
+        }
+        hasScrutin = rs.getInt("has_public_scrutin") == 1;
+        reason = rs.getString("reason");
+      }
+    }
+    if (!hasScrutin) {
+      return SenatFacet.noPublicScrutin(reason);
+    }
+    var raw = new LinkedHashMap<String, BlocVotes>();
+    int session = 0;
+    int numero = 0;
+    String url = null;
+    String date = null;
+    try (PreparedStatement ps =
+        c.prepareStatement(
+            "SELECT session, numero, scrutin_url, scrutin_date, bloc, votes_for, votes_against,"
+                + " votes_abstained FROM scrutins_senat WHERE law_id = ?")) {
+      ps.setString(1, lawId);
+      try (ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          session = rs.getInt("session");
+          numero = rs.getInt("numero");
+          url = rs.getString("scrutin_url");
+          date = rs.getString("scrutin_date");
+          raw.put(
+              rs.getString("bloc"),
+              new BlocVotes(
+                  rs.getInt("votes_for"), rs.getInt("votes_against"), rs.getInt("votes_abstained")));
+        }
+      }
+    }
+    var ordered = new LinkedHashMap<String, BlocVotes>();
+    for (String bloc : BLOC_ORDER) {
+      if (raw.containsKey(bloc)) {
+        ordered.put(bloc, raw.get(bloc));
+      }
+    }
+    return SenatFacet.withScrutin(session, numero, url, date, ordered);
   }
 
   /** 1.0 → 1 (entier), 1.5 → 1.5 — pour une sérialisation identique à laws.js. */

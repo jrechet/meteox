@@ -1,6 +1,6 @@
 # Dépendances externes — Meteox
 
-**Dernière mise à jour** : 2026-07-17
+**Dernière mise à jour** : 2026-07-21
 
 ## Vue d'ensemble
 
@@ -22,6 +22,7 @@ graph TD
     Backend -->|Lois publiées| Visitor
     
     Backend -->|sync-scrutins| OpenData["📋 Open Data AN<br/>data.assemblee-nationale.fr"]
+    Backend -->|sync-senat| OpenDataSenat["🏛️ Open Data Sénat<br/>data.senat.fr + senat.fr"]
     Backend -->|check-sources| GitHubIssues["🐙 GitHub API<br/>Issues + Comments"]
     Backend -->|Extraction IA| AnthropicAPI["🤖 Anthropic API<br/>Claude (opt.)"]
     Backend -->|Extraction IA| Ollama["🤖 Ollama local<br/>Dev only"]
@@ -48,6 +49,7 @@ graph TD
 | **API Backend meteox-laws** | Propriétaire (jrec.fr) | Auto-hébergé | Aucune (CORS public) | Onglet Lois servi par le **snapshot embarqué** (données archivées, datées honnêtement) ; plus de fraîcheur | ⭐ Basse (remplacement complet = nouveau backend) | Approuvé 2026-07-16 |
 | **Open Data Assemblée Nationale** | Assemblée Nationale FR | Gratuit (open data) | Aucune | Données de votes obsolètes, sync-scrutins échoue quotidiennement | ⭐⭐ Moyenne (export manuel AN, polling alternatif) | Approuvé 2026-07 |
 | **Open Data AN — AMO30** (tous acteurs, mandats, organes) | Assemblée Nationale FR | Gratuit (open data) | Aucune | Données de groupe politique / cosignataires indisponibles ; signal d'importance et analyse réseau dégradés (résolution best-effort → signataires vides, candidats conservés) | ⭐ Basse (pas d'équivalent structuré des mandats AN) | Approuvé 2026-07 (open data AN) |
+| **Open Data Sénat** (Dosleg, scrutins JSON, ODSEN_HISTOGROUPES) | Sénat FR (data.senat.fr + senat.fr) | Gratuit — Licence Ouverte | Aucune | Facette « scrutin public au Sénat » des cartes obsolète ou absente ; sync-senat échoue (cache disque réutilisé, dernière valeur conservée) | ⭐ Basse (pas d'équivalent structuré des dossiers/scrutins du Sénat) | Approuvé 2026-07-21 (extension Sénat, issue #3 tâche 4) |
 | **GitHub API** (issues, comments) | GitHub / Microsoft | Gratuit (public) / plan GitHub | `MX_GITHUB_TOKEN` | Job check-sources échoue, pas de rapports sur les sources invalides | ⭐⭐⭐ Haute (Mail notifier, Slack webhook, Telegram) | Approuvé (intégré CD) |
 | **GitHub OAuth** (connexion admin) | GitHub / Microsoft | Gratuit | `MX_GITHUB_OAUTH_CLIENT_ID` + `_SECRET` (OAuth App) | Connexion admin GitHub indisponible ; repli sur le jeton `X-Admin-Token` de secours (l'admin reste accessible) | ⭐⭐⭐ Haute (autre IdP OAuth/OIDC, ou jeton seul) | Approuvé 2026-07-20 (demande utilisateur, remplace le jeton comme voie humaine) |
 | **GitHub Container Registry** (ghcr.io) | GitHub / Microsoft | Gratuit (public) | Token GITHUB_TOKEN (CI) | Build échoue, impossible de déployer nouvelles images | ⭐⭐ Moyenne (Docker Hub, private registry, Quay.io) | Approuvé (intégré CD) |
@@ -80,5 +82,6 @@ graph TD
 4. **Reliance matrix** :
    - Frontend ➜ Backend : **critique** (fallback via snapshot)
    - Backend ➜ Open Data AN : **élevée** (données légales, job quotidien)
+   - Backend ➜ Open Data Sénat : **moyenne** (facette Sénat des cartes, job quotidien ; cache disque réutilisé si indisponible — Licence Ouverte : mentionner la source et la date de mise à jour)
    - Backend ➜ Anthropic API : **moyenne** (extraction assistée, scores=0 en fallback)
    - Pipeline CD ➜ GitHub Actions + self-hosted runner : **critique** (sans déploiement, version en production restée figée)

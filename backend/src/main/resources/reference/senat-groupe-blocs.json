@@ -1,0 +1,14 @@
+{
+  "_comment": "Référence code groupe ODSEN (Sénat) → bloc politique meteox (issue #3, tâche 4). Source : ODSEN_HISTOGROUPES.json (data.senat.fr). ATTENTION — les codes ODSEN sont HISTORIQUES et ne correspondent pas au sigle actuel : UMP = Les Républicains, LREM = RDPI (majorité présidentielle), CRC = CRCE-Kanaky (communiste), GEST = Écologiste – Solidarité et Territoires, RTLI = Les Indépendants – République et Territoires, UC = Union Centriste, RDSE = Rassemblement Démocratique et Social Européen, NI = réunion administrative des non-inscrits (où siègent les élus RN — il n'existe PAS de groupe d'extrême droite au Sénat). Mapping arrêté avec le propriétaire (décisions fermes) : UC → droite (allié structurel de LR dans la majorité sénatoriale) ; NI → extremeDroite (rend le vote RN visible) ; RDSE → horsBlocs (groupe transversal, EXCLU des agrégats comme les non-inscrits de l'AN). Contrat identique à reference/organe-blocs.json (AN) : un code absent = échec explicite (Golden Rule, jamais de total faussé). Vérifié : l'agrégation reproduit exactement l'analyse par groupe de la page officielle du scrutin 2022-125 (0 matricule inconnu sur 348 votes).",
+  "groupes": [
+    { "code": "SOC",  "libelle": "Socialiste, Écologiste et Républicain",             "bloc": "gauche" },
+    { "code": "CRC",  "libelle": "CRCE-Kanaky (communiste)",                          "bloc": "gauche" },
+    { "code": "GEST", "libelle": "Écologiste – Solidarité et Territoires",            "bloc": "gauche" },
+    { "code": "LREM", "libelle": "RDPI (majorité présidentielle, Renaissance)",       "bloc": "milieu" },
+    { "code": "RTLI", "libelle": "Les Indépendants – République et Territoires",       "bloc": "milieu" },
+    { "code": "UMP",  "libelle": "Les Républicains",                                   "bloc": "droite" },
+    { "code": "UC",   "libelle": "Union Centriste",                                    "bloc": "droite" },
+    { "code": "NI",   "libelle": "Réunion administrative des non-inscrits (RN)",       "bloc": "extremeDroite" },
+    { "code": "RDSE", "libelle": "Rassemblement Démocratique et Social Européen",      "bloc": "horsBlocs" }
+  ]
+}
