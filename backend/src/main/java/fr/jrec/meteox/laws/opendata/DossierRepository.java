@@ -77,6 +77,30 @@ public class DossierRepository {
     }
   }
 
+  /**
+   * Candidats pour la page de relecture : en attente ({@code candidate}) ET déjà promus
+   * ({@code promoted}, non clos) — une carte publiée reste visible avec son état, pour pouvoir
+   * la dépublier sans qu'elle disparaisse de la liste.
+   */
+  public List<Candidate> listForReview() {
+    var out = new ArrayList<Candidate>();
+    try (Connection c = dataSource.getConnection();
+        PreparedStatement ps =
+            c.prepareStatement(
+                "SELECT uid, legislature, titre, dossier_url, theme, procedure, projet_de_loi,"
+                    + " terminated, status, promoted_law_id, stage FROM dossier_candidates"
+                    + " WHERE status IN ('candidate', 'promoted') AND terminated = 0"
+                    + " ORDER BY projet_de_loi DESC, last_seen DESC");
+        ResultSet rs = ps.executeQuery()) {
+      while (rs.next()) {
+        out.add(mapCandidate(rs));
+      }
+    } catch (SQLException e) {
+      throw new IllegalStateException("Listing des candidats en relecture impossible", e);
+    }
+    return out;
+  }
+
   public List<Candidate> listByStatus(String status) {
     var out = new ArrayList<Candidate>();
     try (Connection c = dataSource.getConnection();
@@ -114,6 +138,17 @@ public class DossierRepository {
   public void markRejected(String uid) {
     execute(
         "UPDATE dossier_candidates SET status = 'rejected' WHERE uid = ?",
+        ps -> ps.setString(1, uid));
+  }
+
+  /**
+   * Dépublication : le candidat redevient {@code candidate} (re-promouvable). On CONSERVE
+   * {@code promoted_law_id} : la ligne de loi dépubliée existe toujours — une re-promotion la
+   * republie (UPDATE) au lieu d'échouer sur l'INSERT.
+   */
+  public void markCandidate(String uid) {
+    execute(
+        "UPDATE dossier_candidates SET status = 'candidate' WHERE uid = ?",
         ps -> ps.setString(1, uid));
   }
 

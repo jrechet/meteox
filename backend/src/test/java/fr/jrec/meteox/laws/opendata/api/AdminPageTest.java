@@ -33,6 +33,22 @@ class AdminPageTest {
   }
 
   @Test
+  void admin_page_exposes_review_ux_hooks() {
+    // UX de relecture (retours 2026-07-18) : dépublication (la carte publiée reste affichée,
+    // badge « Publiée »), filtre « porté par » (bloc politique), tri par cosignataires, et lien
+    // de reconnexion affiché quand la session expire (fini le « Jeton admin invalide » sec).
+    get("/admin.html")
+        .then()
+        .statusCode(200)
+        .body(containsString("data-act=\"demote\""))
+        .body(containsString("data-pub"))
+        .body(containsString("id=\"f-bloc\""))
+        .body(containsString("id=\"f-sort\""))
+        .body(containsString("id=\"reconnect\""))
+        .body(containsString("Dépublier"));
+  }
+
+  @Test
   void admin_page_exposes_corpus_section() {
     // Section « lois votées candidates » (issue #3, tâche 3) : liste, filtre, sync, promotion
     // avec dossier officiel requis (URL + fragment) — branchée sur /api/admin/corpus.

@@ -144,6 +144,66 @@ class AdminDossierApiTest {
     browser().when().post("/api/admin/dossiers/" + CAND + "/reject").then().statusCode(204);
   }
 
+  /**
+   * Cycle complet publication → dépublication → re-publication (boutons « Promouvoir » /
+   * « Dépublier » de la page admin). La carte publiée reste LISTÉE (status 'promoted') — elle ne
+   * disparaît pas de la relecture — puis redevient promouvable après dépublication, et la
+   * re-promotion REPUBLIE la même ligne de loi (UPDATE, pas d'INSERT en échec).
+   */
+  @Test
+  void depublier_puis_repromouvoir_depuis_origine_admin() {
+    seedCandidate();
+    String promoteBody = "{\"category\":\"eau\",\"summary\":\"résumé\",\"sourceExpect\":\"test\"}";
+    browser()
+        .contentType("application/json")
+        .body(promoteBody)
+        .when()
+        .post("/api/admin/dossiers/" + CAND + "/promote")
+        .then()
+        .statusCode(201);
+
+    // La carte promue reste visible dans la liste de relecture, avec son état.
+    browser()
+        .when()
+        .get("/api/admin/dossiers/candidates")
+        .then()
+        .statusCode(200)
+        .body("find { it.uid == '" + CAND + "' }.status", is("promoted"));
+    // …et la loi est publiée côté public.
+    given().when().get("/api/laws").then().body("find { it.id == '" + CAND + "' }.id", is(CAND));
+
+    // Dépublication : la loi quitte le site public, le candidat redevient 'candidate'.
+    browser()
+        .when()
+        .post("/api/admin/dossiers/" + CAND + "/demote")
+        .then()
+        .statusCode(200)
+        .body("lawId", is(CAND));
+    given().when().get("/api/laws").then().body("find { it.id == '" + CAND + "' }", nullValue());
+    browser()
+        .when()
+        .get("/api/admin/dossiers/candidates")
+        .then()
+        .statusCode(200)
+        .body("find { it.uid == '" + CAND + "' }.status", is("candidate"));
+
+    // Re-promotion : republie la MÊME ligne (chemin UPDATE) — de nouveau visible côté public.
+    browser()
+        .contentType("application/json")
+        .body(promoteBody)
+        .when()
+        .post("/api/admin/dossiers/" + CAND + "/promote")
+        .then()
+        .statusCode(201);
+    given().when().get("/api/laws").then().body("find { it.id == '" + CAND + "' }.id", is(CAND));
+  }
+
+  @Test
+  void depublier_un_candidat_non_promu_est_refuse() {
+    seedCandidate();
+    browser().when().post("/api/admin/dossiers/" + CAND + "/demote").then().statusCode(409);
+  }
+
   @Test
   void sans_jeton_non_autorise() {
     given()

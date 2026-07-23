@@ -117,13 +117,14 @@ public class DossierSyncService {
   }
 
   /**
-   * Candidats en attente de relecture, enrichis de leur initiateur et du soutien (cosignataires)
-   * agrégé par groupe politique (issue #33, sous-issue D). Tri par importance : les projets de loi
-   * (gouvernement) d'abord, puis les textes les plus soutenus (nombre de cosignataires décroissant).
-   * L'agrégat est calculé en UNE requête groupée (pas de N+1).
+   * Candidats pour la relecture — en attente ET déjà promus (une carte publiée reste visible avec
+   * son état, dépubliable sans disparaître de la liste) — enrichis de leur initiateur et du soutien
+   * (cosignataires) agrégé par groupe politique (issue #33, sous-issue D). Tri par importance : les
+   * projets de loi (gouvernement) d'abord, puis les textes les plus soutenus (nombre de
+   * cosignataires décroissant). L'agrégat est calculé en UNE requête groupée (pas de N+1).
    */
   public List<CandidateView> candidatesForReview() {
-    List<DossierRepository.Candidate> raw = candidates.listByStatus("candidate");
+    List<DossierRepository.Candidate> raw = candidates.listForReview();
     Map<String, Aggregate> aggregates =
         signataires.aggregate(raw.stream().map(DossierRepository.Candidate::uid).toList());
     return raw.stream()
@@ -167,11 +168,36 @@ public class DossierSyncService {
     String fragment = (sourceExpect == null || sourceExpect.isBlank()) ? c.titre() : sourceExpect;
     String stage =
         (c.stage() == null || c.stage().isBlank()) ? DossierParser.STAGE_FALLBACK : c.stage();
-    laws.insertUpcoming(
-        uid, c.titre(), category, summary, c.dossierUrl(), fragment, c.dossierUrl(), fragment, stage);
+    if (c.promotedLawId() != null && laws.findById(c.promotedLawId()).isPresent()) {
+      // Re-promotion après dépublication : la ligne de loi existe déjà — on la republie.
+      laws.republishUpcoming(
+          uid, c.titre(), category, summary, c.dossierUrl(), fragment, c.dossierUrl(), fragment, stage);
+    } else {
+      laws.insertUpcoming(
+          uid, c.titre(), category, summary, c.dossierUrl(), fragment, c.dossierUrl(), fragment, stage);
+    }
     candidates.markPromoted(uid, uid);
     LOG.infof("Candidat %s promu en carte upcoming (catégorie %s, étape « %s »)", uid, category, stage);
     return uid;
+  }
+
+  /**
+   * Dépublication humaine (pendant de {@link #promote}) : la carte quitte le site public, le
+   * candidat redevient {@code candidate} (re-promouvable — la re-promotion republie la même
+   * ligne de loi). Rend l'identifiant de la loi dépubliée.
+   */
+  public String demote(String uid) {
+    DossierRepository.Candidate c =
+        candidates
+            .findByUid(uid)
+            .orElseThrow(() -> new IllegalArgumentException("Candidat inconnu : " + uid));
+    if (!"promoted".equals(c.status()) || c.promotedLawId() == null) {
+      throw new IllegalStateException("Candidat non promu : rien à dépublier pour " + uid);
+    }
+    laws.unpublish(c.promotedLawId());
+    candidates.markCandidate(uid);
+    LOG.infof("Candidat %s dépublié (loi %s retirée du site public)", uid, c.promotedLawId());
+    return c.promotedLawId();
   }
 
   /** Écarte un candidat non pertinent (il ne sera plus proposé à la relecture). */

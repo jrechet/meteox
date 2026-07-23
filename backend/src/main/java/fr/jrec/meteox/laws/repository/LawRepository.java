@@ -169,6 +169,38 @@ public class LawRepository {
     return out;
   }
 
+  /**
+   * Republie une carte {@code upcoming} dépubliée (cycle promotion → dépublication → re-promotion,
+   * issue #3) : met à jour les champs éditoriaux et repasse {@code published = 1}. La ligne doit
+   * exister — c'est le pendant UPDATE de {@link #insertUpcoming}.
+   */
+  public void republishUpcoming(
+      String id,
+      String title,
+      String category,
+      String summary,
+      String sourceUrl,
+      String sourceExpect,
+      String textUrl,
+      String textExpect,
+      String stage) {
+    execute(
+        "UPDATE laws SET title = ?, category = ?, status = 'upcoming', date = NULL, summary = ?,"
+            + " source_url = ?, source_expect = ?, text_url = ?, text_expect = ?, stage = ?,"
+            + " published = 1, updated_at = datetime('now') WHERE id = ?",
+        ps -> {
+          ps.setString(1, title);
+          ps.setString(2, category);
+          ps.setString(3, summary);
+          ps.setString(4, sourceUrl);
+          ps.setString(5, sourceExpect);
+          ps.setString(6, textUrl);
+          ps.setString(7, textExpect);
+          ps.setString(8, stage);
+          ps.setString(9, id);
+        });
+  }
+
   private void insertLaw(
       String status,
       String id,
