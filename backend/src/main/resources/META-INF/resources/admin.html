@@ -114,6 +114,24 @@
         border-radius: 99px;
         padding: 0.05rem 0.5rem;
       }
+      .badge-pub {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--bg);
+        background: oklch(45% 0.13 145);
+        border-radius: 99px;
+        padding: 0.1rem 0.55rem;
+      }
+      /* Carte publiée : état visible d'un coup d'œil (liseré + fond légèrement teinté). */
+      .cand[data-uid-root]:has(.badge-pub:not([hidden])) {
+        background: color-mix(in oklch, oklch(45% 0.13 145) 5%, transparent);
+        border-left: 3px solid oklch(45% 0.13 145);
+        padding-left: 0.7rem;
+        margin-left: -0.7rem;
+        border-radius: 6px;
+      }
+      button:disabled { opacity: 0.55; cursor: progress; }
+      #reconnect { font-weight: 700; color: var(--red); }
       .chk { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; }
       .chk input { width: auto; }
       .cand__actions { margin-top: 0.55rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -156,7 +174,8 @@
         </p>
       </div>
 
-      <p id="status" role="status" aria-live="polite"></p>
+      <p id="status" role="status" aria-live="polite"><span data-status-text></span>
+        <a id="reconnect" hidden href="">Se reconnecter</a></p>
 
       <h2 class="section-title">Prochains scrutins — dossiers candidats</h2>
       <div class="toolbar" id="filters" hidden>
@@ -167,6 +186,26 @@
         <div class="grow">
           <label for="f-search">Recherche (titre)</label>
           <input id="f-search" type="search" placeholder="ex. eau, pesticides, souveraineté…" />
+        </div>
+        <div>
+          <label for="f-bloc">Porté par</label>
+          <select id="f-bloc">
+            <option value="">Tous</option>
+            <option value="gouvernement">Gouvernement (projets de loi)</option>
+            <option value="gauche">Gauche</option>
+            <option value="milieu">Centre</option>
+            <option value="droite">Droite</option>
+            <option value="extremeDroite">Extrême droite</option>
+            <option value="?">Non résolu</option>
+          </select>
+        </div>
+        <div>
+          <label for="f-sort">Tri</label>
+          <select id="f-sort">
+            <option value="importance">Importance (défaut)</option>
+            <option value="cosign">Cosignataires (desc)</option>
+            <option value="titre">Titre A→Z</option>
+          </select>
         </div>
         <label class="chk"><input id="f-gov" type="checkbox" /> Projets de loi uniquement</label>
         <span class="count" id="count"></span>
@@ -198,6 +237,7 @@
     <template id="cand-tpl">
       <div class="cand">
         <div class="cand__head">
+          <span class="badge-pub" data-pub hidden>✓ Publiée sur le site</span>
           <span class="badge-gov" data-gov hidden>★ Projet de loi · gouvernement</span>
           <span class="tag" data-theme></span>
           <span class="cand__title" data-title></span>
@@ -212,6 +252,7 @@
         <div class="cand__actions">
           <button class="small" data-act="open-promote">Promouvoir</button>
           <button class="small danger" data-act="reject">Rejeter</button>
+          <button class="small ghost" data-act="demote" hidden>Dépublier</button>
         </div>
         <form class="promote-form hidden" data-form>
           <div class="row">
@@ -313,8 +354,29 @@
       const token = () => $('#token').value.trim();
 
       function setStatus(msg, kind) {
-        statusEl.textContent = msg || '';
+        $('[data-status-text]', statusEl).textContent = msg || '';
         statusEl.className = kind ? 'status--' + kind : '';
+        if (kind !== 'auth') $('#reconnect').hidden = true;
+      }
+
+      /** Session expirée : message clair + lien de reconnexion (le rechargement relance la mire GitHub). */
+      function showReconnect() {
+        setStatus('Session expirée — ', 'auth');
+        statusEl.className = 'status--err';
+        const link = $('#reconnect');
+        link.href = location.href;
+        link.hidden = false;
+      }
+
+      /** Marque un bouton « en cours » (désactivé + libellé) ; rend une fonction de restauration. */
+      function busy(btn, label) {
+        const previous = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = label;
+        return () => {
+          btn.disabled = false;
+          btn.textContent = previous;
+        };
       }
 
       async function api(path, options = {}) {
@@ -322,7 +384,10 @@
           ...options,
           headers: { 'X-Admin-Token': token(), 'Content-Type': 'application/json', ...(options.headers || {}) },
         });
-        if (res.status === 401) throw new Error('Jeton admin invalide.');
+        if (res.status === 401) {
+          showReconnect();
+          throw new Error('Session expirée ou jeton invalide.');
+        }
         if (res.status === 503) throw new Error('Admin fermé côté serveur (MX_ADMIN_TOKEN non configuré).');
         if (!res.ok) {
           let detail = 'HTTP ' + res.status;
@@ -339,16 +404,30 @@
           themes.map((t) => `<option value="${t}">${t}</option>`).join('');
       }
 
+      /** Bloc « porteur » d'un candidat : gouvernement (projet de loi) ou bloc de l'initiateur. */
+      function porteurBloc(c) {
+        return c.projetDeLoi ? 'gouvernement' : (c.auteur && c.auteur.bloc) || '?';
+      }
+
       function render() {
         const theme = $('#f-theme').value;
         const q = $('#f-search').value.trim().toLowerCase();
         const govOnly = $('#f-gov').checked;
+        const bloc = $('#f-bloc').value;
+        const sort = $('#f-sort').value;
         const shown = candidates.filter(
           (c) =>
             (!theme || c.theme === theme) &&
             (!q || c.titre.toLowerCase().includes(q)) &&
-            (!govOnly || c.projetDeLoi),
+            (!govOnly || c.projetDeLoi) &&
+            (!bloc || porteurBloc(c) === bloc),
         );
+        // Tri : « importance » = ordre serveur (projets de loi puis cosignataires) ; sinon local.
+        if (sort === 'cosign') {
+          shown.sort((a, b) => b.cosignatairesTotal - a.cosignatairesTotal);
+        } else if (sort === 'titre') {
+          shown.sort((a, b) => a.titre.localeCompare(b.titre, 'fr'));
+        }
         const list = $('#list');
         list.textContent = '';
         if (!candidates.length) {
@@ -364,8 +443,15 @@
         $('#list-card').hidden = false;
       }
 
+      /** Re-rend la carte d'un candidat SUR PLACE (jamais de disparition : l'état change, pas la liste). */
+      function refreshCard(c) {
+        const current = document.querySelector('.cand[data-uid-root="' + c.uid + '"]');
+        if (current) current.replaceWith(candNode($('#cand-tpl'), c));
+      }
+
       function candNode(tpl, c) {
         const node = tpl.content.cloneNode(true);
+        node.querySelector('.cand').dataset.uidRoot = c.uid;
         $('[data-theme]', node).textContent = c.theme;
         $('[data-title]', node).textContent = c.titre;
         $('[data-uid]', node).textContent = c.uid;
@@ -399,12 +485,21 @@
         // « à venir » affiche l'étape officielle du dossier (sourcée), jamais une date fabriquée.
         $('[data-f="sourceExpect"]', form).value = c.titre.split(/\s+/).slice(0, 6).join(' ');
         $('[data-f="summary"]', form).value = c.titre + '.';
+        if (c.status === 'promoted') {
+          // Carte déjà publiée : état visible + action inverse — elle ne disparaît jamais.
+          $('[data-pub]', node).hidden = false;
+          $('[data-act="open-promote"]', node).hidden = true;
+          $('[data-act="reject"]', node).hidden = true;
+          const demoteBtn = $('[data-act="demote"]', node);
+          demoteBtn.hidden = false;
+          demoteBtn.addEventListener('click', () => demote(c, demoteBtn));
+        }
         $('[data-act="open-promote"]', node).addEventListener('click', () => form.classList.toggle('hidden'));
         $('[data-act="cancel-promote"]', node).addEventListener('click', () => form.classList.add('hidden'));
-        $('[data-act="reject"]', node).addEventListener('click', () => reject(c.uid));
+        $('[data-act="reject"]', node).addEventListener('click', (e) => reject(c.uid, e.currentTarget));
         form.addEventListener('submit', (e) => {
           e.preventDefault();
-          promote(c.uid, {
+          promote(c, e.submitter || $('button[type="submit"]', form), {
             category: $('[data-f="category"]', form).value,
             summary: $('[data-f="summary"]', form).value.trim(),
             sourceExpect: $('[data-f="sourceExpect"]', form).value.trim(),
@@ -427,8 +522,24 @@
           setStatus(
             candidates.length + ' dossier(s) et ' + lawCandidates.length + ' loi(s) votée(s) en attente.',
             'ok');
+          return true;
         } catch (e) {
           setStatus(e.message, 'err');
+          return false;
+        }
+      }
+
+      /**
+       * Tentative silencieuse à l'ouverture (la session GitHub authentifie sans jeton). Si elle
+       * échoue sans jeton saisi, ce n'est PAS une erreur de l'utilisateur : invitation neutre.
+       */
+      async function initialLoad() {
+        const ok = await load();
+        if (!ok && !token()) {
+          statusEl.className = '';
+          $('#reconnect').hidden = true;
+          $('[data-status-text]', statusEl).textContent =
+            'Non connecté — connecte-toi via GitHub (recharge la page) ou saisis le jeton admin puis « Charger les candidats ».';
         }
       }
 
@@ -445,30 +556,49 @@
         }
       }
 
-      async function promote(uid, body) {
+      async function promote(c, submitBtn, body) {
         if (!body.category) return setStatus('La catégorie est requise.', 'err');
-        setStatus('Publication…');
+        const restore = busy(submitBtn, 'Publication…');
         try {
-          const r = await api('/dossiers/' + encodeURIComponent(uid) + '/promote', {
+          const r = await api('/dossiers/' + encodeURIComponent(c.uid) + '/promote', {
             method: 'POST',
             body: JSON.stringify(body),
           });
-          candidates = candidates.filter((c) => c.uid !== uid);
-          render();
+          // La carte RESTE affichée : elle passe à l'état « Publiée » sur place (publication en
+          // cascade sans saut d'interface), avec « Dépublier » comme action inverse.
+          c.status = 'promoted';
+          c.promotedLawId = r.lawId;
+          refreshCard(c);
           setStatus('Carte publiée : ' + r.lawId + ' (vérifiée par check-sources au prochain contrôle).', 'ok');
         } catch (e) {
+          restore();
           setStatus(e.message, 'err');
         }
       }
 
-      async function reject(uid) {
+      async function demote(c, btn) {
+        const restore = busy(btn, 'Dépublication…');
+        try {
+          await api('/dossiers/' + encodeURIComponent(c.uid) + '/demote', { method: 'POST' });
+          c.status = 'candidate';
+          refreshCard(c);
+          setStatus('Carte dépubliée — le candidat reste promouvable.', 'ok');
+        } catch (e) {
+          restore();
+          setStatus(e.message, 'err');
+        }
+      }
+
+      async function reject(uid, btn) {
         if (!confirm('Rejeter ce candidat ? Il ne sera plus proposé.')) return;
+        const restore = btn ? busy(btn, 'Rejet…') : () => {};
         try {
           await api('/dossiers/' + encodeURIComponent(uid) + '/reject', { method: 'POST' });
           candidates = candidates.filter((c) => c.uid !== uid);
           render();
           setStatus('Candidat rejeté.', 'ok');
         } catch (e) {
+          restore();
           setStatus(e.message, 'err');
         }
       }
@@ -593,14 +723,17 @@
       $('#f-theme').addEventListener('change', render);
       $('#f-search').addEventListener('input', render);
       $('#f-gov').addEventListener('change', render);
+      $('#f-bloc').addEventListener('change', render);
+      $('#f-sort').addEventListener('change', render);
       $('#law-sync').addEventListener('click', syncLaws);
       $('#lf-theme').addEventListener('change', renderLaws);
       $('#lf-search').addEventListener('input', renderLaws);
       // Au chargement : on tente directement (la session GitHub authentifie sans jeton). Un jeton
-      // mémorisé est repré-rempli pour la voie de secours ; en cas de 401, un message invite à agir.
+      // mémorisé est repré-rempli pour la voie de secours. Un 401 à CE stade n'est pas une erreur
+      // de l'utilisateur (il n'a encore rien fait) : invitation neutre plutôt que rouge anxiogène.
       const saved = sessionStorage.getItem('mx_admin_token');
       if (saved) $('#token').value = saved;
-      load();
+      initialLoad();
     </script>
   </body>
 </html>

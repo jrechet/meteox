@@ -78,6 +78,23 @@ public class AdminDossierResource {
     }
   }
 
+  /**
+   * Dépublie une carte « à venir » promue (pendant de {@code /promote}) : elle quitte le site
+   * public, le candidat reste listé et redevient promouvable.
+   */
+  @POST
+  @Path("/{uid}/demote")
+  public Response demote(@PathParam("uid") String uid, @HeaderParam("X-Admin-Token") String token) {
+    adminAuth.require(token);
+    try {
+      return Response.ok(new Promoted(service.demote(uid))).build();
+    } catch (IllegalArgumentException e) {
+      return Response.status(Response.Status.NOT_FOUND).entity(new Error(e.getMessage())).build();
+    } catch (IllegalStateException e) {
+      return Response.status(Response.Status.CONFLICT).entity(new Error(e.getMessage())).build();
+    }
+  }
+
   /** Écarte un candidat non pertinent. */
   @POST
   @Path("/{uid}/reject")
