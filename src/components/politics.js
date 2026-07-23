@@ -1,4 +1,5 @@
 import { escapeHtml, safeUrl } from '../lib/html.js';
+import { AN_GROUPS, SENAT_GROUPS } from '../lib/vote-groups.js';
 
 export const citizenActionIcon = `
   <svg class="citizen-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -93,21 +94,8 @@ function voteGroupHTML(partyName, votes) {
   `;
 }
 
-// Groupes politiques agrégés en 4 blocs (donnée backend). Les libellés de partis diffèrent
-// selon la chambre : l'AN garde ses groupes détaillés, le Sénat reste en blocs génériques
-// (les groupes sénatoriaux ne sont pas fabriqués ici — seule l'appartenance au bloc l'est côté API).
-const AN_GROUPS = [
-  ['gauche', 'Gauche (NFP/LFI/PS/EELV)'],
-  ['milieu', 'Centre (EPR/MoDem/Horizons)'],
-  ['droite', 'Droite (DR/LR)'],
-  ['extremeDroite', 'Extrême Droite (RN/UDR)'],
-];
-const SENAT_GROUPS = [
-  ['gauche', 'Gauche'],
-  ['milieu', 'Centre'],
-  ['droite', 'Droite'],
-  ['extremeDroite', 'Extrême droite'],
-];
+// Groupes politiques agrégés en 4 blocs (donnée backend) — libellés partagés avec les
+// pages statiques par loi : voir src/lib/vote-groups.js.
 
 /** Les 4 blocs de votes d'une chambre (barres + agrégats) — rendu strictement identique AN/Sénat. */
 function voteBlocsHTML(votes, groups) {
@@ -174,6 +162,17 @@ const INDICATOR_LABELS = {
 };
 
 const CONFIDENCE_LABELS = { haute: 'confiance haute', moyenne: 'confiance moyenne', basse: 'confiance basse' };
+
+/**
+ * Permalien discret vers la page statique de la loi (`loi/{id}/`, générée au build) —
+ * URL résolue contre la base Vite (`/meteox/` en prod) pour rester correcte partout.
+ * Rend chaque loi liable/partageable directement depuis sa carte. KISS : pas de router.
+ */
+function permalinkHTML(lawId) {
+  const base = import.meta.env?.BASE_URL || '/';
+  const href = `${base}loi/${encodeURIComponent(lawId)}/`;
+  return `<a href="${escapeHtml(href)}" class="pcard__link pcard__link--sm" data-permalink>Permalien ↗</a>`;
+}
 
 /**
  * Dépliant « Pourquoi ces scores ? » (issue #4) : justification citée, confiance et
@@ -295,6 +294,7 @@ export function politicsHTML(state) {
 
       <div class="pcard__actions">
         <a href="${escapeHtml(safeUrl(law.textUrl))}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
+        ${permalinkHTML(law.id)}
         <button class="btn btn--citoyen btn--sm" data-action="interpellate" data-law-id="${escapeHtml(law.id)}">
           ${citizenActionIcon}
           <span>Interpeller mon député</span>
@@ -337,6 +337,7 @@ export function politicsHTML(state) {
       <div class="pcard__actions">
         <a href="${escapeHtml(safeUrl(law.textUrl))}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
         <a href="${escapeHtml(safeUrl(law.sourceUrl))}" target="_blank" rel="noopener" class="pcard__link">Scrutin officiel ↗</a>
+        ${permalinkHTML(law.id)}
       </div>
     </article>
   `).join('');

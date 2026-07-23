@@ -6,12 +6,13 @@
   "description": "Météo Évolution — same-day weather across the decades for France",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "vite build && npm run generate:pages",
     "preview": "vite preview",
     "test": "vitest run",
     "test:e2e": "vite build && node test/e2e.mjs",
     "check:sources": "node scripts/check-sources.mjs",
-    "generate:snapshot": "node scripts/generate-snapshot.mjs"
+    "generate:snapshot": "node scripts/generate-snapshot.mjs",
+    "generate:pages": "node scripts/generate-law-pages.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.0",
