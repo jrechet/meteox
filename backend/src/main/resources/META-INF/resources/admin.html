@@ -132,6 +132,19 @@
       }
       button:disabled { opacity: 0.55; cursor: progress; }
       #reconnect { font-weight: 700; color: var(--red); }
+      /* --- Réseaux de soutien --- */
+      .net-title { font-size: 0.95rem; margin: 1.1rem 0 0.5rem; }
+      .net-title .muted { font-weight: 400; font-size: 0.8rem; }
+      .net-note { font-size: 0.8rem; margin: 0 0 0.4rem; }
+      .net-scroll { overflow-x: auto; }
+      .net-matrix { border-collapse: collapse; font-size: 0.82rem; }
+      .net-matrix th, .net-matrix td { padding: 0.35rem 0.6rem; text-align: right; border: 1px solid var(--line); }
+      .net-matrix th { color: var(--ink-soft); font-weight: 600; text-align: left; }
+      .net-matrix td[data-w] { font-variant-numeric: tabular-nums; }
+      .net-links, .net-pairs { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.85rem; }
+      .net-link { display: flex; align-items: center; gap: 0.5rem; }
+      .net-bar { height: 6px; background: var(--accent); border-radius: 3px; opacity: 0.55; }
+      .net-pair-arrow { color: var(--ink-faint); }
       .chk { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; color: var(--ink-soft); white-space: nowrap; }
       .chk input { width: auto; }
       .cand__actions { margin-top: 0.55rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
@@ -231,6 +244,18 @@
 
       <div class="card" id="law-list-card" hidden>
         <div id="law-list"></div>
+      </div>
+
+      <h2 class="section-title">Réseaux de soutien — analyse</h2>
+      <div class="card" id="network-card" hidden>
+        <p class="muted net-note">Lecture des cosignatures stockées (auteurs et cosignataires résolus).
+        Les signataires au groupe non résolu sont exclus — réseau incomplet plutôt que faux.</p>
+        <h3 class="net-title">Soutien par bloc <span class="muted">— les textes portés par… sont cosignés par…</span></h3>
+        <div id="net-matrix" class="net-scroll"></div>
+        <h3 class="net-title">Liens entre groupes <span class="muted">— co-présents sur ≥ 2 dossiers</span></h3>
+        <div id="net-links"></div>
+        <h3 class="net-title">Ponts transpartisans <span class="muted">— soutien récurrent aux textes d'un autre groupe</span></h3>
+        <div id="net-pairs"></div>
       </div>
     </main>
 
@@ -522,11 +547,113 @@
           setStatus(
             candidates.length + ' dossier(s) et ' + lawCandidates.length + ' loi(s) votée(s) en attente.',
             'ok');
+          // Analyse réseau : best-effort — un échec ici ne bloque jamais la relecture.
+          try {
+            renderNetwork(await api('/reseau'));
+          } catch (_) {}
           return true;
         } catch (e) {
           setStatus(e.message, 'err');
           return false;
         }
+      }
+
+      // --- Réseaux de soutien : rendu 100 % textContent/createElement (données externes) ---
+
+      // Autonome (PAS un spread de BLOC_LABELS : déclaré plus bas dans le script → TDZ).
+      const ALL_BLOC_LABELS =
+        { gauche: 'Gauche', milieu: 'Centre', droite: 'Droite', extremeDroite: 'Extr. droite', horsBlocs: 'Hors blocs' };
+      const blocLabel = (b) => ALL_BLOC_LABELS[b] || b;
+
+      function renderNetwork(net) {
+        renderMatrix(net.soutienParBloc || []);
+        renderLinks(net.liens || [], net.groupes || []);
+        renderPairs(net.pontsTranspartisans || []);
+        $('#network-card').hidden = false;
+      }
+
+      function renderMatrix(rows) {
+        const el = $('#net-matrix');
+        el.textContent = '';
+        if (!rows.length) { el.textContent = 'Pas encore de données de cosignature.'; return; }
+        const blocs = ['gauche', 'milieu', 'droite', 'extremeDroite', 'horsBlocs']
+          .filter((b) => rows.some((r) => r.auteurBloc === b || r.cosignataireBloc === b));
+        const max = Math.max(...rows.map((r) => r.cosignatures));
+        const table = document.createElement('table');
+        table.className = 'net-matrix';
+        const head = table.insertRow();
+        head.appendChild(document.createElement('th')).textContent = 'Textes portés par ↓ / cosignés par →';
+        blocs.forEach((b) => { head.appendChild(document.createElement('th')).textContent = blocLabel(b); });
+        blocs.forEach((ab) => {
+          const tr = table.insertRow();
+          tr.appendChild(document.createElement('th')).textContent = blocLabel(ab);
+          blocs.forEach((cb) => {
+            const cell = rows.find((r) => r.auteurBloc === ab && r.cosignataireBloc === cb);
+            const td = tr.insertCell();
+            td.dataset.w = '1';
+            td.textContent = cell ? String(cell.cosignatures) : '·';
+            if (cell) td.style.background = `color-mix(in oklch, var(--accent) ${Math.round((cell.cosignatures / max) * 35)}%, transparent)`;
+          });
+        });
+        el.appendChild(table);
+      }
+
+      function renderLinks(liens, groupes) {
+        const el = $('#net-links');
+        el.textContent = '';
+        el.className = 'net-links';
+        if (!liens.length) { el.textContent = 'Aucun lien récurrent entre groupes pour le moment.'; return; }
+        const blocOf = Object.fromEntries(groupes.map((g) => [g.sigle, g.bloc]));
+        const max = liens[0].dossiers;
+        liens.slice(0, 15).forEach((l) => {
+          const row = document.createElement('div');
+          row.className = 'net-link';
+          const label = document.createElement('span');
+          label.textContent = l.a + ' ↔ ' + l.b;
+          const bar = document.createElement('span');
+          bar.className = 'net-bar';
+          bar.style.width = Math.max(8, Math.round((l.dossiers / max) * 160)) + 'px';
+          const n = document.createElement('span');
+          n.className = 'muted';
+          n.textContent = l.dossiers + ' dossier(s)';
+          [blocOf[l.a], blocOf[l.b]].forEach((b) => {
+            if (!b) return;
+            const chip = document.createElement('span');
+            chip.className = 'grp';
+            chip.dataset.bloc = b;
+            chip.textContent = blocLabel(b);
+            row.appendChild(chip);
+          });
+          row.prepend(label);
+          row.appendChild(bar);
+          row.appendChild(n);
+          el.appendChild(row);
+        });
+      }
+
+      function renderPairs(pairs) {
+        const el = $('#net-pairs');
+        el.textContent = '';
+        el.className = 'net-pairs';
+        if (!pairs.length) {
+          el.textContent = 'Aucun soutien transpartisan récurrent détecté (≥ 2 textes).';
+          return;
+        }
+        pairs.forEach((p) => {
+          const row = document.createElement('div');
+          const co = document.createElement('strong');
+          co.textContent = p.cosignataireNom + ' (' + p.cosignataireSigle + ')';
+          const arrow = document.createElement('span');
+          arrow.className = 'net-pair-arrow';
+          arrow.textContent = ' soutient les textes de ';
+          const au = document.createElement('strong');
+          au.textContent = p.auteurNom + ' (' + p.auteurSigle + ')';
+          const n = document.createElement('span');
+          n.className = 'muted';
+          n.textContent = ' · ' + p.dossiers + ' texte(s)';
+          row.append(co, arrow, au, n);
+          el.appendChild(row);
+        });
       }
 
       /**

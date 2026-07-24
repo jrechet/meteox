@@ -49,6 +49,20 @@ class AdminPageTest {
   }
 
   @Test
+  void admin_page_exposes_network_section() {
+    // Analyse réseau (issue #33, prolongement) : matrice de soutien par bloc, liens entre
+    // groupes, ponts transpartisans — branchée sur /api/admin/reseau.
+    get("/admin.html")
+        .then()
+        .statusCode(200)
+        .body(containsString("Réseaux de soutien"))
+        .body(containsString("id=\"net-matrix\""))
+        .body(containsString("id=\"net-links\""))
+        .body(containsString("id=\"net-pairs\""))
+        .body(containsString("/reseau"));
+  }
+
+  @Test
   void admin_page_exposes_corpus_section() {
     // Section « lois votées candidates » (issue #3, tâche 3) : liste, filtre, sync, promotion
     // avec dossier officiel requis (URL + fragment) — branchée sur /api/admin/corpus.
