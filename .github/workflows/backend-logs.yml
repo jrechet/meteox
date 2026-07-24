@@ -1,0 +1,21 @@
+name: Backend logs (int, à la demande)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  dump-logs:
+    runs-on: [self-hosted, meteox]
+    steps:
+      - name: État du service + logs récents
+        run: |
+          echo "::group::docker service ps mxlawsint_api"
+          docker service ps --no-trunc mxlawsint_api || true
+          echo "::endgroup::"
+          echo "::group::docker service logs (500 dernières lignes)"
+          docker service logs --tail 500 --timestamps mxlawsint_api 2>&1 || true
+          echo "::endgroup::"
+          echo "::group::espace disque + volume"
+          df -h /data 2>/dev/null || docker system df || true
+          docker volume inspect mxlawsint_laws-data --format '{{.Mountpoint}}' 2>/dev/null | xargs -I{} sh -c 'df -h {}; ls -la {}/opendata 2>/dev/null | head' || true
+          echo "::endgroup::"
