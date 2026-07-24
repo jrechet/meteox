@@ -15,6 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import fr.jrec.meteox.laws.opendata.DossierSignataireRepository.Signataire;
 import fr.jrec.meteox.laws.repository.LawRepository;
 import io.quarkus.test.junit.QuarkusTest;
 import jakarta.inject.Inject;
@@ -54,6 +55,7 @@ class DossierSyncServiceTest {
 
   @Inject DossierSyncService service;
   @Inject DossierRepository candidates;
+  @Inject DossierSignataireRepository signataires;
   @Inject LawRepository laws;
   @Inject DataSource dataSource;
 
@@ -93,6 +95,9 @@ class DossierSyncServiceTest {
       st.executeUpdate("DELETE FROM scrutins WHERE law_id LIKE 'test-%'");
       // 'test-%' + les lois upcoming promues (id = uid dossier, ex. DLR…) créées par les tests.
       st.executeUpdate("DELETE FROM laws WHERE id LIKE 'test-%' OR id LIKE 'DLR%'");
+      // Signataires semés (test de préservation) : ne pas polluer les agrégats réseau des
+      // autres classes de test.
+      st.executeUpdate("DELETE FROM dossier_signataires WHERE dossier_uid LIKE 'DLR%'");
     }
   }
 
@@ -165,6 +170,30 @@ class DossierSyncServiceTest {
     service.syncAll();
     service.syncAll();
     assertEquals(1, candidates.listByStatus("candidate").size());
+  }
+
+  /**
+   * RÉGRESSION (perte de données prod ~2026-07-2x) : un run où la résolution des signataires
+   * échoue (ici : document de dépôt ABSENT du zip de test) ne doit JAMAIS écraser les
+   * signataires déjà stockés par des listes vides. On n'écrase que sur une lecture faisant foi.
+   */
+  @Test
+  void un_echec_de_resolution_ne_vide_jamais_les_signataires_stockes() throws Exception {
+    signataires.replaceForDossier(
+        EAU,
+        java.util.List.of(
+            new Signataire("auteur", "PA1", "Léa Rivière", "LFI-NFP", "gauche"),
+            new Signataire("cosignataire", "PA2", "Dan Ève", "HOR", "milieu")));
+    // Le zip de test contient le dossier (avec sa référence de dépôt AN1-DEPOT) mais AUCUN
+    // document json/document/… : la résolution échoue pour ce run.
+    stubDataset(17, zipOf(EAU));
+
+    service.syncAll();
+
+    assertEquals(
+        2,
+        signataires.listForDossier(EAU).size(),
+        "résolution en échec → les signataires stockés sont préservés, jamais remplacés par du vide");
   }
 
   @Test
