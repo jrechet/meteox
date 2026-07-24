@@ -109,8 +109,12 @@ public class DossierSyncService {
       return;
     }
     try {
-      List<Signataire> resolved = signataireResolver.resolve(d.legislature(), d.depotDocumentRef());
-      signataires.replaceForDossier(d.uid(), resolved);
+      // Contrat anti-perte de données : on n'écrase les signataires stockés QUE si la résolution
+      // a réellement lu le document (Optional présent). Un échec (réseau, jeu partiel) préserve
+      // l'existant — un run quotidien raté ne vide plus jamais la table.
+      signataireResolver
+          .resolve(d.legislature(), d.depotDocumentRef())
+          .ifPresent(resolved -> signataires.replaceForDossier(d.uid(), resolved));
     } catch (RuntimeException e) {
       LOG.warnf("Signataires du dossier %s non enregistrés (%s) — candidat conservé", d.uid(), e.getMessage());
     }

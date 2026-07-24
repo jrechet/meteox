@@ -17,8 +17,17 @@ import org.jboss.logging.Logger;
  * Résout les signataires (auteur + cosignataires) du document de dépôt d'un dossier de loi
  * (issue #33, sous-issue C). BEST-EFFORT par construction : récupère le document via
  * {@link OpenDataDossiers}, l'analyse ({@link DocumentParser}) et résout chaque acteur via le
- * {@link ActeurReferentiel}. Toute défaillance (document absent, réseau, résolution) donne une
- * liste vide — jamais une exception qui remonterait et casserait le scan des dossiers.
+ * {@link ActeurReferentiel}. Jamais d'exception qui remonterait et casserait le scan.
+ *
+ * <p>Le contrat distingue DEUX cas que l'ancienne version confondait (perte de données en prod
+ * le 2026-07-2x : un run quotidien avec l'open data indisponible a remplacé tous les signataires
+ * stockés par des listes vides) :
+ *
+ * <ul>
+ *   <li>{@code Optional.of(liste)} — le document a été lu : résultat FAISANT FOI (même vide) ;
+ *   <li>{@code Optional.empty()} — impossible de savoir (document absent du jeu, réseau,
+ *       parsing) : l'appelant doit PRÉSERVER les signataires déjà stockés.
+ * </ul>
  */
 @ApplicationScoped
 public class SignataireResolver {
@@ -33,18 +42,22 @@ public class SignataireResolver {
 
   /**
    * Auteur (personne OU groupe) et cosignataires du document de dépôt, résolus en nom + groupe.
-   * Rend une liste vide si le document est absent du jeu ou si la résolution échoue (loggé, jamais
-   * propagé). L'auteur (s'il existe) est en tête, suivi des cosignataires dans l'ordre du document.
+   * L'auteur (s'il existe) est en tête, suivi des cosignataires dans l'ordre du document.
+   *
+   * @return le résultat faisant foi si le document a été lu (même sans signataire) ;
+   *     {@link Optional#empty()} si la résolution a ÉCHOUÉ — l'appelant préserve alors l'existant
    */
-  public List<Signataire> resolve(int legislature, String depotDocumentRef) {
+  public Optional<List<Signataire>> resolve(int legislature, String depotDocumentRef) {
     if (depotDocumentRef == null || depotDocumentRef.isBlank()) {
-      return List.of();
+      return Optional.empty();
     }
     try {
       Optional<byte[]> raw = openData.documentJson(legislature, depotDocumentRef);
       if (raw.isEmpty()) {
-        LOG.debugf("Document de dépôt %s absent du jeu (lég. %d) — aucun signataire", depotDocumentRef, legislature);
-        return List.of();
+        // Absent du jeu = « je ne sais pas » (jeu partiel, décalage de publication…), PAS
+        // « aucun signataire » : ne jamais écraser l'existant sur cette base.
+        LOG.debugf("Document de dépôt %s absent du jeu (lég. %d) — signataires existants préservés", depotDocumentRef, legislature);
+        return Optional.empty();
       }
       ParsedDocument doc = documentParser.parse(new ByteArrayInputStream(raw.get()));
       var out = new ArrayList<Signataire>();
@@ -52,14 +65,14 @@ public class SignataireResolver {
       for (String ref : doc.cosignataireRefs()) {
         out.add(person(ROLE_COSIGNATAIRE, ref));
       }
-      return List.copyOf(out);
+      return Optional.of(List.copyOf(out));
     } catch (InterruptedException e) {
       Thread.currentThread().interrupt();
       LOG.warnf("Résolution des signataires interrompue (document %s)", depotDocumentRef);
-      return List.of();
+      return Optional.empty();
     } catch (RuntimeException | java.io.IOException e) {
       LOG.warnf("Résolution des signataires du document %s impossible (%s)", depotDocumentRef, e.getMessage());
-      return List.of();
+      return Optional.empty();
     }
   }
 
