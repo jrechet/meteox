@@ -55,7 +55,27 @@ public class OpenDataDossiers {
    */
   public void forEachDossier(int legislature, Consumer<DossierParser.ParsedDossier> consumer)
       throws IOException, InterruptedException {
-    Path zip = ensureDataset(legislature);
+    try {
+      scanDossiers(ensureDataset(legislature), legislature, consumer);
+    } catch (java.util.zip.ZipException corrupted) {
+      // AUTO-GUÉRISON (même pathologie que l'incident AMO30 2026-07) : zip tronqué en cache
+      // scellé par l'ETag (304 éternel) → invalider et retenter UNE fois avec un frais.
+      LOG.warnf(
+          "Zip dossiers corrompu (%s) — invalidation du cache et re-téléchargement (lég. %d)",
+          corrupted.getMessage(), legislature);
+      invalidateCache(legislature);
+      scanDossiers(ensureDataset(legislature), legislature, consumer);
+    }
+  }
+
+  private void invalidateCache(int legislature) throws IOException {
+    Path dir = Path.of(dataDir);
+    Files.deleteIfExists(dir.resolve("dossiers-" + legislature + ".zip"));
+    Files.deleteIfExists(dir.resolve("dossiers-" + legislature + ".etag"));
+  }
+
+  private void scanDossiers(Path zip, int legislature, Consumer<DossierParser.ParsedDossier> consumer)
+      throws IOException {
     int failures = 0;
     try (ZipFile zf = new ZipFile(zip.toFile())) {
       for (Enumeration<? extends ZipEntry> e = zf.entries(); e.hasMoreElements(); ) {
@@ -87,7 +107,19 @@ public class OpenDataDossiers {
     if (documentUid == null || documentUid.isBlank()) {
       return Optional.empty();
     }
-    Path zip = ensureDataset(legislature);
+    try {
+      return readDocument(ensureDataset(legislature), documentUid);
+    } catch (java.util.zip.ZipException corrupted) {
+      // Même auto-guérison que forEachDossier : cache empoisonné → frais, une fois.
+      LOG.warnf(
+          "Zip dossiers corrompu (%s) — invalidation du cache et re-téléchargement (lég. %d)",
+          corrupted.getMessage(), legislature);
+      invalidateCache(legislature);
+      return readDocument(ensureDataset(legislature), documentUid);
+    }
+  }
+
+  private Optional<byte[]> readDocument(Path zip, String documentUid) throws IOException {
     String suffix = "document/" + documentUid + ".json";
     try (ZipFile zf = new ZipFile(zip.toFile())) {
       for (Enumeration<? extends ZipEntry> e = zf.entries(); e.hasMoreElements(); ) {

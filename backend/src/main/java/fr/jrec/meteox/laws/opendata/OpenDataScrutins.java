@@ -65,7 +65,28 @@ public class OpenDataScrutins {
    */
   public void forEachScrutin(int legislature, Consumer<ScrutinParser.ParsedScrutin> consumer)
       throws IOException, InterruptedException {
-    Path zip = ensureDataset(legislature);
+    try {
+      scanScrutins(ensureDataset(legislature), legislature, consumer);
+    } catch (java.util.zip.ZipException corrupted) {
+      // AUTO-GUÉRISON (même pathologie que l'incident AMO30 2026-07) : zip tronqué en cache
+      // scellé par l'ETag (304 éternel) → invalider et retenter UNE fois avec un frais.
+      LOG.warnf(
+          "Zip Scrutins corrompu (%s) — invalidation du cache et re-téléchargement (lég. %d)",
+          corrupted.getMessage(), legislature);
+      invalidateCache(legislature);
+      scanScrutins(ensureDataset(legislature), legislature, consumer);
+    }
+  }
+
+  private void invalidateCache(int legislature) throws IOException {
+    Path dir = Path.of(dataDir);
+    Files.deleteIfExists(dir.resolve(legislature + ".zip"));
+    Files.deleteIfExists(dir.resolve(legislature + ".etag"));
+    lastChecked.remove(legislature);
+  }
+
+  private void scanScrutins(Path zip, int legislature, Consumer<ScrutinParser.ParsedScrutin> consumer)
+      throws IOException {
     int failures = 0;
     try (ZipFile zf = new ZipFile(zip.toFile())) {
       for (Enumeration<? extends ZipEntry> e = zf.entries(); e.hasMoreElements(); ) {
@@ -91,7 +112,19 @@ public class OpenDataScrutins {
    * @throws IOException si le jeu de données est indisponible (ni remote ni cache)
    */
   public Optional<byte[]> scrutinJson(ScrutinRef ref) throws IOException, InterruptedException {
-    Path zip = ensureDataset(ref.legislature());
+    try {
+      return readScrutin(ensureDataset(ref.legislature()), ref);
+    } catch (java.util.zip.ZipException corrupted) {
+      // Même auto-guérison que forEachScrutin : cache empoisonné → frais, une fois.
+      LOG.warnf(
+          "Zip Scrutins corrompu (%s) — invalidation du cache et re-téléchargement (lég. %d)",
+          corrupted.getMessage(), ref.legislature());
+      invalidateCache(ref.legislature());
+      return readScrutin(ensureDataset(ref.legislature()), ref);
+    }
+  }
+
+  private static Optional<byte[]> readScrutin(Path zip, ScrutinRef ref) throws IOException {
     try (ZipFile zf = new ZipFile(zip.toFile())) {
       ZipEntry entry = findEntry(zf, ref.fileName());
       if (entry == null) {

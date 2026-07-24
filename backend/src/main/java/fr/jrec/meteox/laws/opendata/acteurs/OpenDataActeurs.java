@@ -78,7 +78,30 @@ public class OpenDataActeurs {
   public void forEachEntry(
       int legislature, Consumer<ParsedActeur> onActeur, Consumer<ParsedOrgane> onOrgane)
       throws IOException, InterruptedException {
-    Path zip = ensureDataset(legislature);
+    try {
+      scanEntries(ensureDataset(legislature), legislature, onActeur, onOrgane);
+    } catch (java.util.zip.ZipException corrupted) {
+      // AUTO-GUÉRISON (incident prod 2026-07) : un zip tronqué en cache est auto-entretenu par
+      // l'ETag (l'AN répond 304 « inchangé » pour toujours). On invalide cache + ETag et on
+      // retente UNE fois avec un téléchargement frais ; si lui aussi échoue, l'erreur remonte.
+      LOG.warnf(
+          "Zip AMO30 corrompu (%s) — invalidation du cache et re-téléchargement (lég. %d)",
+          corrupted.getMessage(), legislature);
+      invalidateCache(legislature);
+      scanEntries(ensureDataset(legislature), legislature, onActeur, onOrgane);
+    }
+  }
+
+  private void invalidateCache(int legislature) throws IOException {
+    Path dir = Path.of(dataDir);
+    Files.deleteIfExists(dir.resolve("acteurs-" + legislature + ".zip"));
+    Files.deleteIfExists(dir.resolve("acteurs-" + legislature + ".etag"));
+    lastChecked.remove(legislature);
+  }
+
+  private void scanEntries(
+      Path zip, int legislature, Consumer<ParsedActeur> onActeur, Consumer<ParsedOrgane> onOrgane)
+      throws IOException {
     int failures = 0;
     try (ZipFile zf = new ZipFile(zip.toFile())) {
       for (Enumeration<? extends ZipEntry> e = zf.entries(); e.hasMoreElements(); ) {
