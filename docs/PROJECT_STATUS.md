@@ -17,7 +17,8 @@
 | Backend (env **int**) | https://jrec.fr/meteox-laws-int | ✅ live — Quarkus + SQLite, swarm jrec.fr (routage par chemin) |
 | Admin (relecture) | https://jrec.fr/meteox-laws-int/admin.html | ✅ live — connexion GitHub OAuth **ou** `X-Admin-Token` |
 
-- **`main` = `9c38131`** (dernier merge : PR #55). CI/CD verts.
+- **`main`** — dernier changement **applicatif** : PR #55 (`9c38131`). CI/CD verts. (Des montées
+  Renovate — #51, #56… — passent régulièrement par-dessus ; c'est normal, elles ne changent pas le produit.)
 - Data prod : **11 lois publiées** (dont 7 « à venir » validées à la main) ; **161 dossiers candidats**,
   ~123 avec auteur résolu / ~92 cosignés (reconstruits depuis l'open data après incident, voir plus bas).
 
