@@ -110,9 +110,9 @@ public class DossierSyncService {
     try {
       SupportNetworkRepository.Coverage cov = network.coverage();
       LOG.infof(
-          "sync-dossiers couverture : %d dossier(s) avec auteur / %d avec signataires ; groupes"
+          "sync-dossiers couverture : %d/%d candidat(s) avec auteur (%d avec signataires) ; groupes"
               + " résolus %d/%d signataires (cosign. %d/%d) ; sigles sans bloc %s",
-          cov.dossiersAvecAuteur(), cov.dossiersAvecSignataires(),
+          cov.dossiersAvecAuteur(), cov.candidats(), cov.dossiersAvecSignataires(),
           cov.signatairesAvecGroupe(), cov.signataires(),
           cov.cosignatairesAvecGroupe(), cov.cosignataires(),
           cov.siglesSansBloc());

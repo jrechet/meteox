@@ -45,35 +45,47 @@ public class SupportNetworkRepository {
       int dossiers) {}
 
   /**
-   * Taux de résolution des signataires (DoD issue #58 : mesurer avant/après). Compté sur la table
-   * {@code dossier_signataires} : combien de dossiers portent un auteur, quelle part des signataires
-   * a un groupe politique résolu, et quels sigles restent SANS bloc (trous du mapping organe-blocs).
+   * Taux de résolution (DoD issue #58 : mesurer avant/après), mesuré sur LA MÊME population que la
+   * relecture admin — les candidats {@code candidate}/{@code promoted} non clos. Tous les compteurs
+   * décrivent donc le même ensemble : {@code candidats} sert de dénominateur honnête (les dossiers
+   * sans auteur résolu = {@code candidats − dossiersAvecAuteur}), et {@code siglesSansBloc} liste
+   * les groupes résolus mais absents du mapping {@code organe-blocs.json}.
    */
   public record Coverage(
-      int dossiersAvecSignataires,
+      int candidats,
       int dossiersAvecAuteur,
+      int dossiersAvecSignataires,
       int signataires,
       int signatairesAvecGroupe,
       int cosignataires,
       int cosignatairesAvecGroupe,
       List<String> siglesSansBloc) {}
 
-  /** Mesure de couverture de la résolution (auteurs, groupes) sur l'ensemble des signataires stockés. */
+  /** Sélectionne la population de relecture (candidats en attente ou promus, non clos). */
+  private static final String REVIEW_SCOPE = "c.status IN ('candidate', 'promoted') AND c.terminated = 0";
+
+  /** Mesure de couverture de la résolution sur les candidats en relecture (voir {@link Coverage}). */
   public Coverage coverage() {
     String totals =
-        "SELECT COUNT(DISTINCT dossier_uid) AS dossiers,"
-            + " COUNT(DISTINCT CASE WHEN role = 'auteur' THEN dossier_uid END) AS dossiers_auteur,"
-            + " COUNT(*) AS signataires,"
-            + " COUNT(CASE WHEN groupe_sigle IS NOT NULL THEN 1 END) AS sig_groupe,"
-            + " COUNT(CASE WHEN role = 'cosignataire' THEN 1 END) AS cosign,"
-            + " COUNT(CASE WHEN role = 'cosignataire' AND groupe_sigle IS NOT NULL THEN 1 END) AS cosign_groupe"
-            + " FROM dossier_signataires";
+        "SELECT COUNT(DISTINCT c.uid) AS candidats,"
+            + " COUNT(DISTINCT CASE WHEN s.role = 'auteur' THEN c.uid END) AS dossiers_auteur,"
+            + " COUNT(DISTINCT s.dossier_uid) AS dossiers_sig,"
+            + " COUNT(s.id) AS signataires,"
+            + " COUNT(CASE WHEN s.groupe_sigle IS NOT NULL THEN 1 END) AS sig_groupe,"
+            + " COUNT(CASE WHEN s.role = 'cosignataire' THEN 1 END) AS cosign,"
+            + " COUNT(CASE WHEN s.role = 'cosignataire' AND s.groupe_sigle IS NOT NULL THEN 1 END) AS cosign_groupe"
+            + " FROM dossier_candidates c"
+            + " LEFT JOIN dossier_signataires s ON s.dossier_uid = c.uid"
+            + " WHERE " + REVIEW_SCOPE;
     String gaps =
-        "SELECT DISTINCT groupe_sigle FROM dossier_signataires"
-            + " WHERE groupe_sigle IS NOT NULL AND bloc IS NULL ORDER BY groupe_sigle";
+        "SELECT DISTINCT s.groupe_sigle FROM dossier_signataires s"
+            + " JOIN dossier_candidates c ON c.uid = s.dossier_uid"
+            + " WHERE " + REVIEW_SCOPE
+            + " AND s.groupe_sigle IS NOT NULL AND s.bloc IS NULL ORDER BY s.groupe_sigle";
     try (Connection c = dataSource.getConnection()) {
-      int dossiers;
+      int candidats;
       int dossiersAuteur;
+      int dossiersSig;
       int signataires;
       int sigGroupe;
       int cosign;
@@ -81,8 +93,9 @@ public class SupportNetworkRepository {
       try (PreparedStatement ps = c.prepareStatement(totals);
           ResultSet rs = ps.executeQuery()) {
         rs.next();
-        dossiers = rs.getInt("dossiers");
+        candidats = rs.getInt("candidats");
         dossiersAuteur = rs.getInt("dossiers_auteur");
+        dossiersSig = rs.getInt("dossiers_sig");
         signataires = rs.getInt("signataires");
         sigGroupe = rs.getInt("sig_groupe");
         cosign = rs.getInt("cosign");
@@ -96,7 +109,7 @@ public class SupportNetworkRepository {
         }
       }
       return new Coverage(
-          dossiers, dossiersAuteur, signataires, sigGroupe, cosign, cosignGroupe,
+          candidats, dossiersAuteur, dossiersSig, signataires, sigGroupe, cosign, cosignGroupe,
           List.copyOf(siglesSansBloc));
     } catch (SQLException e) {
       throw new IllegalStateException("Mesure de couverture de la résolution impossible", e);
