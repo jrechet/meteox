@@ -4,6 +4,23 @@ Ce document résume l'architecture, le fonctionnement et les commandes clés de 
 
 ---
 
+## 0. À LIRE EN PREMIER — état d'avancement & suivi
+
+> Le gros du travail actif porte aujourd'hui sur l'onglet **« Lois & Climat »** (backend Quarkus +
+> open data AN, admin de relecture), pas sur le module météo décrit aux §1-7 ci-dessous.
+
+1. **Avant de commencer quoi que ce soit, lis [`docs/PROJECT_STATUS.md`](docs/PROJECT_STATUS.md)** —
+   le tableau de bord vivant : ce qui est fait, en cours, à venir, et les **pièges connus**. C'est
+   l'index rapide pour ne pas relire toutes les issues.
+2. **L'historique détaillé = les issues GitHub + les PR.** Le board pointe vers elles. Règle de
+   travail : `docs/BACKLOG.md` (index des issues + Definition of Done commune).
+3. **Definition of Done — toujours inclure la traçabilité.** Toute tâche livrée met à jour
+   `docs/PROJECT_STATUS.md` et **synchronise les issues GitHub** (fermer ce qui est fait avec un
+   commentaire de clôture, ouvrir ce qui se profile). Procédure : **skill [`project-status`](.claude/skills/project-status/SKILL.md)**.
+   Objectif : *si le contexte est vidé, le prochain agent ne perd aucune information importante.*
+
+---
+
 ## 1. Présentation Générale de l'Application
 
 **Météo Évolution** est une application web monopage (SPA) client-side permettant de comparer la météo du jour avec celle du même jour calendaire depuis 1940 en France. L'objectif est d'illustrer de manière interactive le réchauffement climatique à l'échelle locale.
