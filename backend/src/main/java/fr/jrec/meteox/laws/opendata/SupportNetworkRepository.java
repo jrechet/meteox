@@ -44,6 +44,65 @@ public class SupportNetworkRepository {
       String cosignataireBloc,
       int dossiers) {}
 
+  /**
+   * Taux de résolution des signataires (DoD issue #58 : mesurer avant/après). Compté sur la table
+   * {@code dossier_signataires} : combien de dossiers portent un auteur, quelle part des signataires
+   * a un groupe politique résolu, et quels sigles restent SANS bloc (trous du mapping organe-blocs).
+   */
+  public record Coverage(
+      int dossiersAvecSignataires,
+      int dossiersAvecAuteur,
+      int signataires,
+      int signatairesAvecGroupe,
+      int cosignataires,
+      int cosignatairesAvecGroupe,
+      List<String> siglesSansBloc) {}
+
+  /** Mesure de couverture de la résolution (auteurs, groupes) sur l'ensemble des signataires stockés. */
+  public Coverage coverage() {
+    String totals =
+        "SELECT COUNT(DISTINCT dossier_uid) AS dossiers,"
+            + " COUNT(DISTINCT CASE WHEN role = 'auteur' THEN dossier_uid END) AS dossiers_auteur,"
+            + " COUNT(*) AS signataires,"
+            + " COUNT(CASE WHEN groupe_sigle IS NOT NULL THEN 1 END) AS sig_groupe,"
+            + " COUNT(CASE WHEN role = 'cosignataire' THEN 1 END) AS cosign,"
+            + " COUNT(CASE WHEN role = 'cosignataire' AND groupe_sigle IS NOT NULL THEN 1 END) AS cosign_groupe"
+            + " FROM dossier_signataires";
+    String gaps =
+        "SELECT DISTINCT groupe_sigle FROM dossier_signataires"
+            + " WHERE groupe_sigle IS NOT NULL AND bloc IS NULL ORDER BY groupe_sigle";
+    try (Connection c = dataSource.getConnection()) {
+      int dossiers;
+      int dossiersAuteur;
+      int signataires;
+      int sigGroupe;
+      int cosign;
+      int cosignGroupe;
+      try (PreparedStatement ps = c.prepareStatement(totals);
+          ResultSet rs = ps.executeQuery()) {
+        rs.next();
+        dossiers = rs.getInt("dossiers");
+        dossiersAuteur = rs.getInt("dossiers_auteur");
+        signataires = rs.getInt("signataires");
+        sigGroupe = rs.getInt("sig_groupe");
+        cosign = rs.getInt("cosign");
+        cosignGroupe = rs.getInt("cosign_groupe");
+      }
+      var siglesSansBloc = new ArrayList<String>();
+      try (PreparedStatement ps = c.prepareStatement(gaps);
+          ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          siglesSansBloc.add(rs.getString(1));
+        }
+      }
+      return new Coverage(
+          dossiers, dossiersAuteur, signataires, sigGroupe, cosign, cosignGroupe,
+          List.copyOf(siglesSansBloc));
+    } catch (SQLException e) {
+      throw new IllegalStateException("Mesure de couverture de la résolution impossible", e);
+    }
+  }
+
   /** Groupes présents dans les signataires, triés par présence décroissante. */
   public List<GroupNode> groupNodes() {
     var out = new ArrayList<GroupNode>();

@@ -1,6 +1,7 @@
 package fr.jrec.meteox.laws.opendata.api;
 
 import fr.jrec.meteox.laws.admin.AdminAuth;
+import fr.jrec.meteox.laws.opendata.DossierRepository;
 import fr.jrec.meteox.laws.opendata.SupportNetworkRepository;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
@@ -29,6 +30,7 @@ public class AdminNetworkResource {
   private static final int MAX_PAIRS = 30;
 
   @Inject SupportNetworkRepository network;
+  @Inject DossierRepository candidates;
   @Inject AdminAuth adminAuth;
 
   @GET
@@ -43,9 +45,24 @@ public class AdminNetworkResource {
         .build();
   }
 
+  /**
+   * Taux de résolution des acteurs/groupes (issue #58) : combien de candidats en relecture portent
+   * un auteur résolu, quelle part des signataires a un groupe, et quels sigles manquent au mapping
+   * organe-blocs. Sert de mesure « avant/après » à la fiabilisation.
+   */
+  @GET
+  @Path("/couverture")
+  public Response couverture(@HeaderParam("X-Admin-Token") String token) {
+    adminAuth.require(token);
+    return Response.ok(new Couverture(candidates.listForReview().size(), network.coverage())).build();
+  }
+
   record Reseau(
       List<SupportNetworkRepository.GroupNode> groupes,
       List<SupportNetworkRepository.GroupLink> liens,
       List<SupportNetworkRepository.BlocSupport> soutienParBloc,
       List<SupportNetworkRepository.CrossGroupPair> pontsTranspartisans) {}
+
+  /** {@code candidatsEnRelecture} = dénominateur ; {@code resolution} = compteurs de la table. */
+  record Couverture(int candidatsEnRelecture, SupportNetworkRepository.Coverage resolution) {}
 }

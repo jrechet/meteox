@@ -63,8 +63,38 @@ class AdminNetworkApiTest {
   }
 
   @Test
+  void couverture_rend_le_taux_de_resolution() {
+    signataires.replaceForDossier(
+        D1,
+        List.of(
+            new Signataire("auteur", "PA800", "Aya Blanc", "LFI-NFP", "gauche"),
+            new Signataire("cosignataire", "PA801", "Max Noir", null, null))); // groupe « ? »
+    given()
+        .header("Origin", ORIGIN)
+        .header("X-Admin-Token", ADMIN)
+        .when()
+        .get("/api/admin/reseau/couverture")
+        .then()
+        .statusCode(200)
+        .body("candidatsEnRelecture", greaterThanOrEqualTo(0))
+        .body("resolution.dossiersAvecAuteur", greaterThanOrEqualTo(1))
+        .body("resolution.signatairesAvecGroupe", greaterThanOrEqualTo(1))
+        .body("resolution.signataires", greaterThanOrEqualTo(2));
+  }
+
+  @Test
   void reseau_sans_jeton_non_autorise() {
     given().header("Origin", ORIGIN).when().get("/api/admin/reseau").then().statusCode(401);
+  }
+
+  @Test
+  void couverture_sans_jeton_non_autorisee() {
+    given()
+        .header("Origin", ORIGIN)
+        .when()
+        .get("/api/admin/reseau/couverture")
+        .then()
+        .statusCode(401);
   }
 
   @Test

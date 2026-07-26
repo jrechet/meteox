@@ -11,6 +11,9 @@ import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.jboss.logging.Logger;
 
 /**
@@ -36,6 +39,9 @@ public class SignataireResolver {
   private static final String ROLE_AUTEUR = "auteur";
   private static final String ROLE_COSIGNATAIRE = "cosignataire";
 
+  /** Token de législature d'un uid AN : le {@code L<NN>} collé au {@code B} du numéro de dépôt. */
+  private static final Pattern REF_LEGISLATURE = Pattern.compile("L(\\d{1,2})B");
+
   @Inject OpenDataDossiers openData;
   @Inject DocumentParser documentParser;
   @Inject ActeurReferentiel referentiel;
@@ -51,12 +57,17 @@ public class SignataireResolver {
     if (depotDocumentRef == null || depotDocumentRef.isBlank()) {
       return Optional.empty();
     }
+    // Un dépôt hérité d'une législature antérieure (dossier 17e re-déposé, texte « …L16B… ») ne vit
+    // PAS dans le zip de la 17e mais dans celui de SA propre législature. On lit le token L<NN> de
+    // l'uid pour aller chercher le document au bon endroit ; à défaut de token, on garde la lég. du
+    // dossier. (issue #58 — « documents multi-législatures / lég. absente ».)
+    int documentLegislature = legislatureOfRef(depotDocumentRef).orElse(legislature);
     try {
-      Optional<byte[]> raw = openData.documentJson(legislature, depotDocumentRef);
+      Optional<byte[]> raw = openData.documentJson(documentLegislature, depotDocumentRef);
       if (raw.isEmpty()) {
         // Absent du jeu = « je ne sais pas » (jeu partiel, décalage de publication…), PAS
         // « aucun signataire » : ne jamais écraser l'existant sur cette base.
-        LOG.debugf("Document de dépôt %s absent du jeu (lég. %d) — signataires existants préservés", depotDocumentRef, legislature);
+        LOG.debugf("Document de dépôt %s absent du jeu (lég. %d) — signataires existants préservés", depotDocumentRef, documentLegislature);
         return Optional.empty();
       }
       ParsedDocument doc = documentParser.parse(new ByteArrayInputStream(raw.get()));
@@ -99,5 +110,17 @@ public class SignataireResolver {
     String nom = referentiel.nomDe(acteurRef).orElse(null);
     GroupeAffiliation g = referentiel.groupeDe(acteurRef).orElse(null);
     return new Signataire(role, acteurRef, nom, g != null ? g.sigle() : null, g != null ? g.bloc() : null);
+  }
+
+  /**
+   * Législature encodée dans un uid de document/dépôt AN ({@code PIONANR5L17B0517} → 17), lue sur le
+   * token {@code L<NN>B} (le numéro de dépôt suit le {@code B}). Vide si l'uid ne porte pas ce motif.
+   */
+  static OptionalInt legislatureOfRef(String ref) {
+    if (ref == null || ref.isBlank()) {
+      return OptionalInt.empty();
+    }
+    Matcher m = REF_LEGISLATURE.matcher(ref);
+    return m.find() ? OptionalInt.of(Integer.parseInt(m.group(1))) : OptionalInt.empty();
   }
 }
