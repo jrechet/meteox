@@ -1,6 +1,6 @@
 # Project Status — meteox · onglet « Lois & Climat »
 
-_Last updated: 2026-07-26 · analyse réseau livrée + incident signataires (cache ETag) résolu ; mise en place du suivi._
+_Last updated: 2026-07-26 · #58 PR A livrée en int (mesure de couverture + dépôts multi-législatures) ; fallback « dernier groupe connu » reporté en PR B, piloté par les chiffres._
 
 > 📍 **Lis-moi en premier.** Tableau de bord compact tenu à jour à chaque livraison (skill
 > `status-tracking`, enforced par le Stop hook `status-tracker.sh`). Historique détaillé = issues
@@ -8,10 +8,14 @@ _Last updated: 2026-07-26 · analyse réseau livrée + incident signataires (cac
 
 **Prod** : front https://jrechet.github.io/meteox/ (GitHub Pages) · backend **int**
 https://jrec.fr/meteox-laws-int (Quarkus+SQLite, swarm jrec.fr) · admin `…/admin.html` (GitHub OAuth
-ou `X-Admin-Token`). Dernier changement applicatif : PR #55 (`9c38131`), CI/CD verts. Data : 11 lois
+ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`), CI/CD verts, déployé+vérifié int. Data : 11 lois
 publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Résolution #58 (PR A)** — `d89932c`, 2026-07-26. Mesure de couverture (`GET /api/admin/reseau/couverture`
+  + tracée en fin de sync, scopée à la relecture) + résolution des dépôts multi-législatures
+  (`SignataireResolver` lit le token `L<NN>B` de l'uid → bon zip ; `…L16B…` se résout, `…L15B…` reste
+  préservé sans perte). Déployé+vérifié int. (PR #59). **Reste (PR B)** : fallback « dernier groupe connu, marqué comme tel ».
 - **Analyse réseau des soutiens** — `84958a9`, 2026-07-24. `SupportNetworkRepository` (matrice de
   soutien par bloc, liens entre groupes, ponts transpartisans) + `GET /api/admin/reseau` + section admin. (PR #53, prolonge #33)
 - **Fix perte de données signataires** — `627225f`, 2026-07-24. `SignataireResolver.resolve → Optional` :
@@ -23,13 +27,15 @@ publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosi
 - _Antérieur_ : #33 données signataires (V8) · #42 corpus élargi · #43-46 admin OAuth · #47-49 Sénat · #50 pages statiques.
 
 ## 🚧 In progress / not finished
-- **Résolution des acteurs incomplète** — ~45/161 candidats sans auteur, quelques groupes « ? »
-  (lég. 15 en 404, documents sans auteur exploitable). Non bloquant (le réseau exclut les non-résolus). (#58)
+- **Résolution des acteurs — PR B** — reste le fallback « dernier groupe connu, marqué comme tel »
+  (mandat GP actif manquant → « ? ») + complétion du mapping `organe-blocs.json` (sigles remontés par
+  `siglesSansBloc`). À dimensionner sur les chiffres réels de `/couverture` (nécessite `MX_ADMIN_TOKEN` +
+  un `POST …/dossiers/sync`). La sémantique réseau d'une affiliation historique recoupe #57. (#58)
 - **Analyse réseau = admin uniquement** — exposition publique = décision éditoriale non prise. (#57)
 
 ## 📋 Todo / backlog
 - Décider l'exposition publique (ou non) de l'analyse réseau — éditorial. (#57)
-- Fiabiliser la résolution des acteurs « ? » (couverture AMO / fallback). (#58)
+- #58 PR B : fallback « dernier groupe connu » (marqué) + mapping `organe-blocs` + surfacer `/couverture` en admin.
 - Continuer la validation humaine des dossiers candidats via l'admin.
 - _Parké_ : V2 FranceConnect (bloqué juridique) · Renovate `#11` (dashboard bot).
 
