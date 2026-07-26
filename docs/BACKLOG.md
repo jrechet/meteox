@@ -1,7 +1,7 @@
 # Backlog — travail parallélisable par agents
 
-> **⚡ Où on en est maintenant : [PROJECT_STATUS.md](PROJECT_STATUS.md)** (tableau de bord vivant,
-> à lire en premier). Ce fichier-ci = l'**index des issues** + les **règles communes** (DoD).
+> **⚡ Où on en est maintenant : [STATUS.md](STATUS.md)** (tableau de bord vivant, à lire en
+> premier). Ce fichier-ci = l'**index des issues** + les **règles communes** (DoD).
 >
 > **Référence de travail : les GitHub issues.** Chaque issue = une feature couvrant un domaine
 > métier cohérent, avec des macro-tâches à cocher **dans l'issue** au fur et à mesure.
@@ -30,10 +30,9 @@
 - si UI touchée : revue Playwright 375/768/1280/1920 sans overflow ni erreur console ;
 - déployé et vérifié sur l'environnement cible (GitHub Pages via `main` ; backend : env **int** jrec.fr) ;
 - `political_tab.PRD.md` et ce backlog mis à jour ; documentation nouvelle si nécessaire ;
-- **traçabilité (obligatoire)** : [`PROJECT_STATUS.md`](PROJECT_STATUS.md) mis à jour **et** issues
-  GitHub synchronisées (fermer ce qui est fait, ouvrir ce qui se profile) — procédure : skill
-  [`project-status`](../.claude/skills/project-status/SKILL.md). But : si le contexte est vidé, le
-  prochain agent ne perd rien ;
+- **traçabilité (obligatoire)** : [`STATUS.md`](STATUS.md) mis à jour **et** issues GitHub
+  synchronisées (fermer ce qui est fait, ouvrir ce qui se profile) — skill `status-tracking`, imposé
+  par le Stop hook `status-tracker.sh`. But : si le contexte est vidé, le prochain agent ne perd rien ;
 - toutes les cases de l'issue cochées, critères d'acceptance démontrés dans un commentaire de clôture.
 
 ## Issues (créées le 2026-07-14)
@@ -46,7 +45,7 @@
 | [#5 — Front branché sur l'API avec snapshot de fallback](https://github.com/jrechet/meteox/issues/5) | Frontend données | #2 | ✅ Fermée (2026-07-17) — API + snapshot (PR #21), plus de données en dur |
 | [#6 — Qualité éditoriale & accessibilité de l'onglet Lois](https://github.com/jrechet/meteox/issues/6) | Éditorial / a11y | — | ✅ Fermée |
 
-**Reste à faire** : voir [PROJECT_STATUS.md](PROJECT_STATUS.md) (§ Prochaines étapes) — l'état
+**Reste à faire** : voir [STATUS.md](STATUS.md) (§ Todo / In progress) — l'état
 détaillé y est tenu à jour à chaque livraison. Carte des dépendances externes : [DEPENDENCIES.md](DEPENDENCIES.md).
 
 ## Hors backlog (non planifié)
