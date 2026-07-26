@@ -4,6 +4,7 @@ import static io.restassured.RestAssured.given;
 import static org.hamcrest.CoreMatchers.is;
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 
+import fr.jrec.meteox.laws.opendata.DossierRepository;
 import fr.jrec.meteox.laws.opendata.DossierSignataireRepository;
 import fr.jrec.meteox.laws.opendata.DossierSignataireRepository.Signataire;
 import io.quarkus.test.junit.QuarkusTest;
@@ -28,6 +29,7 @@ class AdminNetworkApiTest {
   private static final String D2 = "DLR5L17N96002";
 
   @Inject DossierSignataireRepository signataires;
+  @Inject DossierRepository candidates;
   @Inject DataSource dataSource;
 
   @AfterEach
@@ -35,6 +37,7 @@ class AdminNetworkApiTest {
     try (Connection c = dataSource.getConnection();
         Statement st = c.createStatement()) {
       st.executeUpdate("DELETE FROM dossier_signataires WHERE dossier_uid LIKE 'DLR5L17N96%'");
+      st.executeUpdate("DELETE FROM dossier_candidates WHERE uid LIKE 'DLR5L17N96%'");
     }
   }
 
@@ -63,8 +66,42 @@ class AdminNetworkApiTest {
   }
 
   @Test
+  void couverture_rend_le_taux_de_resolution() {
+    // Candidat en relecture + ses signataires : la couverture est mesurée sur cette population.
+    candidates.upsert(
+        D1, 17, "Titre " + D1, "https://x/dossiers/" + D1, "eau", false,
+        "Proposition de loi ordinaire", false, "En cours d'examen");
+    signataires.replaceForDossier(
+        D1,
+        List.of(
+            new Signataire("auteur", "PA800", "Aya Blanc", "LFI-NFP", "gauche"),
+            new Signataire("cosignataire", "PA801", "Max Noir", null, null))); // groupe « ? »
+    given()
+        .header("Origin", ORIGIN)
+        .header("X-Admin-Token", ADMIN)
+        .when()
+        .get("/api/admin/reseau/couverture")
+        .then()
+        .statusCode(200)
+        .body("candidats", greaterThanOrEqualTo(1))
+        .body("dossiersAvecAuteur", greaterThanOrEqualTo(1))
+        .body("signatairesAvecGroupe", greaterThanOrEqualTo(1))
+        .body("signataires", greaterThanOrEqualTo(2));
+  }
+
+  @Test
   void reseau_sans_jeton_non_autorise() {
     given().header("Origin", ORIGIN).when().get("/api/admin/reseau").then().statusCode(401);
+  }
+
+  @Test
+  void couverture_sans_jeton_non_autorisee() {
+    given()
+        .header("Origin", ORIGIN)
+        .when()
+        .get("/api/admin/reseau/couverture")
+        .then()
+        .statusCode(401);
   }
 
   @Test

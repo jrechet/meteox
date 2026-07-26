@@ -29,6 +29,7 @@ public class DossierSyncService {
   @Inject DossierRepository candidates;
   @Inject DossierSignataireRepository signataires;
   @Inject SignataireResolver signataireResolver;
+  @Inject SupportNetworkRepository network;
   @Inject LawRepository laws;
 
   @ConfigProperty(name = "meteox.sync-dossiers.legislature", defaultValue = "17")
@@ -97,7 +98,27 @@ public class DossierSyncService {
     LOG.infof(
         "sync-dossiers : %d scanné(s), %d candidat(s), %d dépublié(s), %d retiré(s)",
         stats[0], stats[1], stats[2], stats[3]);
+    logCoverage();
     return new SyncReport(stats[0], stats[1], stats[2]);
+  }
+
+  /**
+   * Trace le taux de résolution en fin de passe (visible via le workflow {@code backend-logs}) :
+   * mesure « avant/après » de la fiabilisation (issue #58), sans jamais faire échouer la synchro.
+   */
+  private void logCoverage() {
+    try {
+      SupportNetworkRepository.Coverage cov = network.coverage();
+      LOG.infof(
+          "sync-dossiers couverture : %d/%d candidat(s) avec auteur (%d avec signataires) ; groupes"
+              + " résolus %d/%d signataires (cosign. %d/%d) ; sigles sans bloc %s",
+          cov.dossiersAvecAuteur(), cov.candidats(), cov.dossiersAvecSignataires(),
+          cov.signatairesAvecGroupe(), cov.signataires(),
+          cov.cosignatairesAvecGroupe(), cov.cosignataires(),
+          cov.siglesSansBloc());
+    } catch (RuntimeException e) {
+      LOG.warnf("Mesure de couverture non tracée (%s)", e.getMessage());
+    }
   }
 
   /**

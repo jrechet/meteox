@@ -44,6 +44,78 @@ public class SupportNetworkRepository {
       String cosignataireBloc,
       int dossiers) {}
 
+  /**
+   * Taux de résolution (DoD issue #58 : mesurer avant/après), mesuré sur LA MÊME population que la
+   * relecture admin — les candidats {@code candidate}/{@code promoted} non clos. Tous les compteurs
+   * décrivent donc le même ensemble : {@code candidats} sert de dénominateur honnête (les dossiers
+   * sans auteur résolu = {@code candidats − dossiersAvecAuteur}), et {@code siglesSansBloc} liste
+   * les groupes résolus mais absents du mapping {@code organe-blocs.json}.
+   */
+  public record Coverage(
+      int candidats,
+      int dossiersAvecAuteur,
+      int dossiersAvecSignataires,
+      int signataires,
+      int signatairesAvecGroupe,
+      int cosignataires,
+      int cosignatairesAvecGroupe,
+      List<String> siglesSansBloc) {}
+
+  /** Sélectionne la population de relecture (candidats en attente ou promus, non clos). */
+  private static final String REVIEW_SCOPE = "c.status IN ('candidate', 'promoted') AND c.terminated = 0";
+
+  /** Mesure de couverture de la résolution sur les candidats en relecture (voir {@link Coverage}). */
+  public Coverage coverage() {
+    String totals =
+        "SELECT COUNT(DISTINCT c.uid) AS candidats,"
+            + " COUNT(DISTINCT CASE WHEN s.role = 'auteur' THEN c.uid END) AS dossiers_auteur,"
+            + " COUNT(DISTINCT s.dossier_uid) AS dossiers_sig,"
+            + " COUNT(s.id) AS signataires,"
+            + " COUNT(CASE WHEN s.groupe_sigle IS NOT NULL THEN 1 END) AS sig_groupe,"
+            + " COUNT(CASE WHEN s.role = 'cosignataire' THEN 1 END) AS cosign,"
+            + " COUNT(CASE WHEN s.role = 'cosignataire' AND s.groupe_sigle IS NOT NULL THEN 1 END) AS cosign_groupe"
+            + " FROM dossier_candidates c"
+            + " LEFT JOIN dossier_signataires s ON s.dossier_uid = c.uid"
+            + " WHERE " + REVIEW_SCOPE;
+    String gaps =
+        "SELECT DISTINCT s.groupe_sigle FROM dossier_signataires s"
+            + " JOIN dossier_candidates c ON c.uid = s.dossier_uid"
+            + " WHERE " + REVIEW_SCOPE
+            + " AND s.groupe_sigle IS NOT NULL AND s.bloc IS NULL ORDER BY s.groupe_sigle";
+    try (Connection c = dataSource.getConnection()) {
+      int candidats;
+      int dossiersAuteur;
+      int dossiersSig;
+      int signataires;
+      int sigGroupe;
+      int cosign;
+      int cosignGroupe;
+      try (PreparedStatement ps = c.prepareStatement(totals);
+          ResultSet rs = ps.executeQuery()) {
+        rs.next();
+        candidats = rs.getInt("candidats");
+        dossiersAuteur = rs.getInt("dossiers_auteur");
+        dossiersSig = rs.getInt("dossiers_sig");
+        signataires = rs.getInt("signataires");
+        sigGroupe = rs.getInt("sig_groupe");
+        cosign = rs.getInt("cosign");
+        cosignGroupe = rs.getInt("cosign_groupe");
+      }
+      var siglesSansBloc = new ArrayList<String>();
+      try (PreparedStatement ps = c.prepareStatement(gaps);
+          ResultSet rs = ps.executeQuery()) {
+        while (rs.next()) {
+          siglesSansBloc.add(rs.getString(1));
+        }
+      }
+      return new Coverage(
+          candidats, dossiersAuteur, dossiersSig, signataires, sigGroupe, cosign, cosignGroupe,
+          List.copyOf(siglesSansBloc));
+    } catch (SQLException e) {
+      throw new IllegalStateException("Mesure de couverture de la résolution impossible", e);
+    }
+  }
+
   /** Groupes présents dans les signataires, triés par présence décroissante. */
   public List<GroupNode> groupNodes() {
     var out = new ArrayList<GroupNode>();

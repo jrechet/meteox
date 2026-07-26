@@ -43,6 +43,18 @@ public class AdminNetworkResource {
         .build();
   }
 
+  /**
+   * Taux de résolution des acteurs/groupes (issue #58), mesuré sur la population de relecture :
+   * combien de candidats portent un auteur résolu, quelle part des signataires a un groupe, et
+   * quels sigles manquent au mapping organe-blocs. Sert de mesure « avant/après » à la fiabilisation.
+   */
+  @GET
+  @Path("/couverture")
+  public Response couverture(@HeaderParam("X-Admin-Token") String token) {
+    adminAuth.require(token);
+    return Response.ok(network.coverage()).build();
+  }
+
   record Reseau(
       List<SupportNetworkRepository.GroupNode> groupes,
       List<SupportNetworkRepository.GroupLink> liens,
