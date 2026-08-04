@@ -1,3 +1,5 @@
 {
-  "$schema": "https://docs.renovatebot.com/renovate-schema.json"
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "//": "L'instance Renovate self-hosted (jrechet/server-app, renovate/config.js) déclare globalement baseBranches: ['main', 'master']. Ce dépôt n'a pas de branche master → « ⚠️ WARN: Base branch does not exist - skipping » à chaque exécution, sur le dashboard #11. On fixe la base ici, ce qui prime sur la config globale sans toucher aux autres dépôts.",
+  "baseBranches": ["main"]
 }
