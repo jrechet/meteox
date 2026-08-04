@@ -15,22 +15,10 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Exactement la même barrière que sur les PR (front-ci.yml) : une seule définition, donc
+  # une PR verte garantit un déploiement vert.
   test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-      - run: npm ci
-      # Snapshot des lois régénéré depuis l'API backend (fallback : snapshot committé,
-      # refusé s'il est vide ou périmé) — c'est LA donnée qui part dans le bundle.
-      - run: npm run generate:snapshot
-      - run: npm test
-      - run: npm run check:sources
-      - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+    uses: ./.github/workflows/front-ci.yml
 
   build:
     needs: test

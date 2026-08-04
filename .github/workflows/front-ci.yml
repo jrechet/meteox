@@ -1,0 +1,42 @@
+name: front-ci
+
+# Le front n'était testé QU'AU MOMENT DU DÉPLOIEMENT (deploy.yml, push sur main) : les PR
+# front — bumps Renovate compris — se mergeaient sans aucun check, et la casse n'apparaissait
+# qu'une fois sur main, déploiement Pages bloqué. Même job, joué AUSSI sur les PR, et appelé
+# par deploy.yml (workflow_call) pour que « PR verte » veuille bien dire « déploiement vert ».
+on:
+  pull_request:
+    paths:
+      - "src/**"
+      - "test/**"
+      - "scripts/**"
+      - "public/**"
+      - "index.html"
+      - "vite.config.js"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/front-ci.yml"
+      - ".github/workflows/deploy.yml"
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      # Snapshot des lois régénéré depuis l'API backend (fallback : snapshot committé,
+      # refusé s'il est vide ou périmé) — c'est LA donnée qui part dans le bundle, donc
+      # la seule sur laquelle tester la forme réellement publiée.
+      - run: npm run generate:snapshot
+      - run: npm test
+      - run: npm run check:sources
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e

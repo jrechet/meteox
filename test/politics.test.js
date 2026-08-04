@@ -16,7 +16,14 @@ describe('snapshot laws integrity', () => {
       expect(l.title).toBeTruthy();
       expect(CATEGORIES).toContain(l.category);
       expect(['passed', 'upcoming']).toContain(l.status);
-      expect(l.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      // Même contrat que isValidLaw() : `passed` porte la date du scrutin, `upcoming` n'en a
+      // AUCUNE (l'open data n'en source pas — jamais de date fabriquée) et affiche `stage`.
+      if (l.status === 'passed') {
+        expect(l.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      } else {
+        expect(l.date ?? null).toBeNull();
+        expect(l.stage?.trim()).toBeTruthy();
+      }
       expect(l.sourceUrl).toMatch(/^https?:\/\//);
     }
   });
