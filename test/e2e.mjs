@@ -171,6 +171,10 @@ async function run() {
       );
     } else {
       await page.locator('button[data-action="interpellate"]').first().click();
+      // La modale n'est montée qu'après un import() dynamique (lib/laws.js) : on attend le
+      // champ au lieu de le compter tout de suite, sinon la branche « une loi à venir existe »
+      // est une course perdue d'avance sur le chargement du chunk.
+      await page.locator('.cmodal #zipcode-input').waitFor({ timeout: 5000 });
       check(await page.locator('.cmodal #zipcode-input').count() === 1, 'interpellation modal opens');
 
       // Check that search-deputy-btn opens the official Assemblée Nationale card search url
