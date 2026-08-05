@@ -1,6 +1,6 @@
 # Project Status — meteox · onglet « Lois & Climat »
 
-_Last updated: 2026-08-04 · déploiement Pages débloqué après 12 jours de rouge (PR #63) + CI front désormais jouée sur les PR ; bump Renovate #61 posé en int._
+_Last updated: 2026-08-05 · plus aucune mise à jour Renovate en attente, CI sur Node 24, actions GitHub aux majeures courantes ; dépôt ramené à une seule branche (`main`) avec purge automatique à la fusion._
 
 > 📍 **Lis-moi en premier.** Tableau de bord compact tenu à jour à chaque livraison (skill
 > `status-tracking`, enforced par le Stop hook `status-tracker.sh`). Historique détaillé = issues
@@ -8,11 +8,19 @@ _Last updated: 2026-08-04 · déploiement Pages débloqué après 12 jours de ro
 
 **Prod** : front https://jrechet.github.io/meteox/ (GitHub Pages) · backend **int**
 https://jrec.fr/meteox-laws-int (Quarkus+SQLite, swarm jrec.fr) · admin `…/admin.html` (GitHub OAuth
-ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`), déployé+vérifié int ; l'image
-en int porte le bump Renovate #61 (`int-7a4a59d`, posée le 04/08). Front redéployé le 04/08 (`af0ef2f`) après
-12 jours de blocage. Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
+ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'image en int est `int-0a0c34f`
+(05/08, même code backend, redéployée par le bump d'actions). Front déployé le 05/08 (`0a0c34f`).
+Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Remise à niveau complète des dépendances + hygiène du dépôt** — `0a0c34f`, 2026-08-05.
+  **Plus aucune mise à jour Renovate en attente** : #62 (playwright, vite), #60 (jsdom 30), #65 (Node 24),
+  #67 (actions GitHub aux majeures : checkout v7, setup-node v7, setup-java v5, github-script v9, les 3
+  actions Pages, docker/login-action v4). **jsdom 30 était bloqué par le pin Node 20** — il exige
+  `^22.22.2 || ^24.15.0 || >=26`, et l'undici 8.9 qu'il embarque appelle `webidl.util.markAsUncloneable`,
+  absent sur Node 20 : c'est le nouveau CI PR (#63) qui l'a attrapé avant le merge. Dashboard Renovate #11
+  nettoyé de son avertissement permanent (voir handoff). Dépôt ramené à **une seule branche** : 9 branches
+  de PR fusionnées purgées + `delete_branch_on_merge` activé.
 - **Déploiement Pages débloqué + CI front sur les PR** — `af0ef2f`, 2026-08-04. Les 14 derniers déploiements
   Pages échouaient au job `test` : le snapshot régénéré depuis l'API contient 7 lois `upcoming` **sans date**
   (contrat `isValidLaw`), or `politics.test.js` en exigeait une sur toutes les lois → `TypeError`. Front figé
@@ -44,7 +52,8 @@ en int porte le bump Renovate #61 (`int-7a4a59d`, posée le 04/08). Front redép
 - Décider l'exposition publique (ou non) de l'analyse réseau — éditorial. (#57)
 - #58 PR B : fallback « dernier groupe connu » (marqué) + mapping `organe-blocs` + surfacer `/couverture` en admin.
 - Continuer la validation humaine des dossiers candidats via l'admin.
-- _Parké_ : V2 FranceConnect (bloqué juridique) · Renovate `#11` (dashboard bot).
+- _Parké_ : V2 FranceConnect (bloqué juridique) · Renovate `#11` (dashboard bot, plus aucune mise à jour en
+  attente au 05/08) · purge des ~515 enregistrements de runners éphémères morts (côté serveur).
 
 ## 🔑 Handoff notes (à ne pas réapprendre à la dure)
 - **Snapshot front = état SEED.** `src/data/laws-snapshot.json` reste l'état seed (sans facette `senat`) :
@@ -54,9 +63,23 @@ en int porte le bump Renovate #61 (`int-7a4a59d`, posée le 04/08). Front redép
 - **OIDC GitHub** : jamais de `quarkus.oidc.logout.path` (pas d'`end_session_endpoint` → crash boot, a
   fait tomber la prod). Session interne = `internal-id-token-lifespan=12H`.
 - **`verify-int` « cancelled / not acquired by runner »** = runner self-hosted éphémère indisponible,
-  pas un échec du code → `gh run rerun <id> --failed`. Le 04/08 : **0 runner en ligne sur 464 enregistrés**
-  (`gh api repos/jrechet/meteox/actions/runners`) — les enregistrements éphémères morts s'accumulent, et tout
-  job `[self-hosted, meteox]` reste en `queued`. À purger côté serveur quand tu voudras.
+  pas un échec du code → `gh run rerun <id> --failed`. Le 05/08 : **1 runner en ligne sur 516 enregistrés**
+  (`gh api repos/jrechet/meteox/actions/runners`) — les enregistrements éphémères morts s'accumulent (464 la
+  veille), et tout job `[self-hosted, meteox]` peut rester en `queued`. À purger côté serveur quand tu voudras.
+  Attention : un rerun qui traîne en `queued` **bloque le déploiement suivant** (groupe de concurrence
+  `backend-cd`, `cancel-in-progress: false`) — annuler le run superseded plutôt que le laisser attendre.
+- **Un déploiement backend rend 502 pendant ~1 à 2 min** (bascule stop-first, démarrage Quarkus+OIDC) :
+  ce n'est pas un incident, c'est la fenêtre que `verify-int` absorbe avec ses retries.
+- **Renovate : base fixée dans `renovate.json`.** L'instance self-hosted (`jrechet/server-app`,
+  `renovate/config.js`) impose globalement `baseBranches: ['main', 'master']` ; ce dépôt n'a pas de `master`,
+  d'où « ⚠️ WARN: Base branch does not exist - skipping » en tête du dashboard #11 à chaque exécution. Le
+  `baseBranches: ["main"]` local prime, sans toucher aux autres dépôts. Le vrai correctif global reste côté
+  `server-app` si tu veux régler le cas pour tous les projets d'un coup.
+- **`eclipse-temurin` reste en 21 (LTS jusqu'en 2029)** — décision prise le 20/07 en fermant la PR #24 ;
+  la v26 est non-LTS (~6 mois). Renovate ignore désormais les 26.x, et l'entrée « PR Closed (Blocked) » du
+  dashboard est le reflet normal de cette décision, pas un reliquat.
+- **CI front sur Node 24** (`front-ci`, `deploy`, `check-sources`). Un pin Node périmé se manifeste comme un
+  échec de dépendance incompréhensible (cf. jsdom 30 / undici 8.9) : vérifier `engines` avant de conclure.
 - **`docker stack up` peut sortir en `DeadlineExceeded`** alors que la mise à jour du service aboutit :
   relancer le job (idempotent) plutôt que conclure à un échec de déploiement.
 - **Permaliens des lois** : `/loi/<id>/` (dossier + `index.html`, cf. `generate-law-pages.mjs`), pas
