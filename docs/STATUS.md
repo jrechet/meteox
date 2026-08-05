@@ -1,6 +1,6 @@
 # Project Status — meteox · onglet « Lois & Climat »
 
-_Last updated: 2026-08-05 · plus aucune mise à jour Renovate en attente, CI sur Node 24, actions GitHub aux majeures courantes ; dépôt ramené à une seule branche (`main`) avec purge automatique à la fusion._
+_Last updated: 2026-08-05 · politique Renovate globale corrigée côté server-app (plus de majeures, automerge minor/patch, default branch only) ; CI sur Node 24 ; dépôt à une seule branche (`main`)._
 
 > 📍 **Lis-moi en premier.** Tableau de bord compact tenu à jour à chaque livraison (skill
 > `status-tracking`, enforced par le Stop hook `status-tracker.sh`). Historique détaillé = issues
@@ -13,6 +13,12 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Politique Renovate globale corrigée (côté `server-app`, hors dépôt)** — 2026-08-05. Le
+  `renovate/config.js` self-hosted n'impose plus `baseBranches: ['main','master']` (chaque dépôt est
+  suivi sur sa branche par défaut — le WARN « Base branch does not exist » du dashboard #11 disparaît
+  à la source), **les majeures sont désactivées globalement** et les minor/patch restent groupées +
+  automergées. 6 PR Renovate en attente mergées sur les autres dépôts jrechet ; service redéployé et
+  conf vérifiée dans les logs du run.
 - **Remise à niveau complète des dépendances + hygiène du dépôt** — `0a0c34f`, 2026-08-05.
   **Plus aucune mise à jour Renovate en attente** : #62 (playwright, vite), #60 (jsdom 30), #65 (Node 24),
   #67 (actions GitHub aux majeures : checkout v7, setup-node v7, setup-java v5, github-script v9, les 3
@@ -70,11 +76,11 @@ Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec a
   `backend-cd`, `cancel-in-progress: false`) — annuler le run superseded plutôt que le laisser attendre.
 - **Un déploiement backend rend 502 pendant ~1 à 2 min** (bascule stop-first, démarrage Quarkus+OIDC) :
   ce n'est pas un incident, c'est la fenêtre que `verify-int` absorbe avec ses retries.
-- **Renovate : base fixée dans `renovate.json`.** L'instance self-hosted (`jrechet/server-app`,
-  `renovate/config.js`) impose globalement `baseBranches: ['main', 'master']` ; ce dépôt n'a pas de `master`,
-  d'où « ⚠️ WARN: Base branch does not exist - skipping » en tête du dashboard #11 à chaque exécution. Le
-  `baseBranches: ["main"]` local prime, sans toucher aux autres dépôts. Le vrai correctif global reste côté
-  `server-app` si tu veux régler le cas pour tous les projets d'un coup.
+- **Renovate global corrigé le 05/08** : l'instance self-hosted (`jrec.fr:5422`,
+  `~/dev/server-app/renovate/config.js`) n'impose plus de `baseBranches` (default branch par dépôt),
+  désactive les majeures et automerge les minor/patch. Le `baseBranches: ["main"]` local de
+  `renovate.json` est devenu redondant (inoffensif — supprimable à l'occasion). Pour recharger la conf
+  après modif : `docker service update --force renovate_renovate`.
 - **`eclipse-temurin` reste en 21 (LTS jusqu'en 2029)** — décision prise le 20/07 en fermant la PR #24 ;
   la v26 est non-LTS (~6 mois). Renovate ignore désormais les 26.x, et l'entrée « PR Closed (Blocked) » du
   dashboard est le reflet normal de cette décision, pas un reliquat.
