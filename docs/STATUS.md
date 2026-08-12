@@ -88,6 +88,10 @@ Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec a
   `components.test.js` › « pins the axis to the given bounds without extrapolating the trend ».
 - **`loadToken`** (`main.js`) invalide les requêtes d'un lieu précédent : sans lui, un « Paris → Nice »
   rapide écrit les jours de Paris dans l'état de Nice.
+- **Les deux passes d'historique sont indépendantes** : si l'une échoue (429), les années de l'autre
+  s'affichent quand même. Constaté en vrai sur la prod le 12/08 — la passe récente a pris un 429 pendant
+  que la passe profonde réussissait, et une première version jetait le tout. Garde :
+  `test/main-degraded.test.js`.
 - **Snapshot front = état SEED.** `src/data/laws-snapshot.json` reste l'état seed (sans facette `senat`) :
   `LawsApiTest` le compare à un backend frais. La donnée live (Sénat, votes) vient de l'API au runtime.
 - **Cache open data empoisonné** : zip corrompu + ETag = 304 éternel. Auto-guérison en place (#55). Si
