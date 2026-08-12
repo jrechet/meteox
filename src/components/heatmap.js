@@ -174,12 +174,23 @@ export function renderMapSVG(data, year, opts = {}) {
   `;
 }
 
+/**
+ * Two maps as soon as there is another year to compare against — that is the
+ * whole point of picking a past year, in either tab. "Période" used to also
+ * require clicking a day in the strip, so entering the tab showed a single
+ * current-year map with nothing saying how to get the comparison.
+ *
+ * Single source of truth: main.js decides which maps to fetch from this and
+ * views.js picks its layout from it. Three copies of the rule had already
+ * drifted apart (views.js was missing the same-year guard).
+ */
+export function showsDualMaps(state) {
+  return state.selectedYear !== state.currentYear;
+}
+
 export function heatmapContainerHTML(state) {
   const yr = state.selectedYear;
-  const showDualMaps =
-    ((state.mode === 'period' && state.dateSelected) ||
-     (state.mode === 'day' && yr !== state.currentYear)) &&
-    yr !== state.currentYear;
+  const showDualMaps = showsDualMaps(state);
   const dayIso = state.selectedIso || state.todayIso;
   const dayMmdd = monthDay(isoToDate(dayIso));
   const dayLabel = dayMonthLabel(dayIso);

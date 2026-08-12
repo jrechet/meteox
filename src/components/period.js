@@ -7,18 +7,24 @@ import { mean, median } from '../lib/stats.js';
 // `up`/`down`/`same` phrase the écart from the *current* year's point of view —
 // the number alone ("-4,8°") reads equally well in either direction, and a blue
 // "colder" badge on a warming app is exactly where that ambiguity bites.
+// `tone` decides the badge colour: only temperature carries a warm/cold reading.
+// Painting "+12 mm de pluie" orange would borrow a heat semantics the value does
+// not have — rain and wind get a neutral badge and let the words do the work.
+// `noticeable` is the gap below which the badge says "aussi …" rather than
+// claiming a direction. It has to be per-unit: 0.3 is a real difference in °C
+// and noise in km/h.
 export const PERIOD_METRICS = {
   tmax: {
     field: 'tmax', label: 'Température', unit: '°', axis: '°', fmt: fmtTemp, step: 5, digits: 1,
-    up: 'plus chaud', down: 'plus frais', same: 'aussi chaud',
+    up: 'plus chaud', down: 'plus frais', same: 'aussi chaud', tone: 'thermal', noticeable: 0.3,
   },
   precip: {
     field: 'precip', label: 'Pluie', unit: ' mm', axis: '', fmt: fmtMm, step: 5, digits: 1,
-    up: 'plus pluvieux', down: 'plus sec', same: 'aussi pluvieux',
+    up: 'plus pluvieux', down: 'plus sec', same: 'aussi pluvieux', tone: 'neutral', noticeable: 1,
   },
   wind: {
     field: 'wind', label: 'Vent', unit: ' km/h', axis: '', fmt: fmtWind, step: 10, digits: 0,
-    up: 'plus venté', down: 'moins venté', same: 'aussi venté',
+    up: 'plus venté', down: 'moins venté', same: 'aussi venté', tone: 'neutral', noticeable: 2,
   },
 };
 
@@ -213,7 +219,11 @@ export function periodHTML(state) {
   const rMean = mean(rVals);
   const pMean = mean(pVals);
   const dMean = rMean != null && pMean != null ? rMean - pMean : null;
-  const dir = dMean == null ? 'flat' : dMean > 0.3 ? 'warm' : dMean < -0.3 ? 'cold' : 'flat';
+  const gap = metric.noticeable;
+  const dir =
+    dMean == null ? 'flat'
+      : metric.tone === 'neutral' ? 'neutral'
+        : dMean > gap ? 'warm' : dMean < -gap ? 'cold' : 'flat';
 
   // Name both years and the direction: the signed number is measured from this
   // year, but on its own it reads just as naturally the other way round.
@@ -223,7 +233,7 @@ export function periodHTML(state) {
     ? 'glissez le curseur pour comparer à une année passée'
     : dMean == null
       ? `comparaison indisponible sur ${len} j`
-      : `${state.currentYear} ${dMean > 0.3 ? metric.up : dMean < -0.3 ? metric.down : metric.same}` +
+      : `${state.currentYear} ${dMean > gap ? metric.up : dMean < -gap ? metric.down : metric.same}` +
         ` que ${state.selectedYear}, en moyenne sur ${len} j`;
 
   return `

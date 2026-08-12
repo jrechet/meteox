@@ -610,6 +610,13 @@
   background: var(--color-bg-grain);
   color: var(--color-ink-soft);
 }
+/* Rain and wind: a real difference, but no warm/cold reading to borrow. Full-ink
+   on a plain surface — as present as the thermal badges, without the hue. */
+.psum__delta[data-dir='neutral'] {
+  background: var(--color-bg-grain);
+  color: var(--color-ink);
+  box-shadow: inset 0 0 0 1px var(--color-line);
+}
 
 /* day-by-day strip */
 .pstrip {
