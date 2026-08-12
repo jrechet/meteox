@@ -152,6 +152,18 @@ describe('periodHTML', () => {
       expect(withYears(40, 12, 'wind')).toContain('2026 plus venté que 2003');
     });
 
+    // Only temperature has a warm/cold reading — an orange "+12 mm" would borrow
+    // a heat semantics rain doesn't carry.
+    test('rain and wind stay neutral, temperature keeps its warm/cold hue', () => {
+      expect(withYears(12, 0, 'precip')).toContain('data-dir="neutral"');
+      expect(withYears(0, 12, 'precip')).toContain('data-dir="neutral"');
+      expect(withYears(40, 12, 'wind')).toContain('data-dir="neutral"');
+      expect(withYears(12, 40, 'wind')).toContain('data-dir="neutral"');
+
+      expect(withYears(36, 31, 'tmax')).toContain('data-dir="warm"');
+      expect(withYears(31, 36, 'tmax')).toContain('data-dir="cold"');
+    });
+
     // The tab opens on the current year, so this is the first thing users see.
     test('the current year prompts instead of comparing 2026 to itself', () => {
       const html = periodHTML(makeState({ mode: 'period', selectedYear: 2026 }));
@@ -226,6 +238,39 @@ describe('heatmap', () => {
     const dual = heatmapContainerHTML(makeState({ mode: 'period', dateSelected: true }));
     expect(dual).toContain('heatmap-card--wide');
     expect(dual).toContain('(Actuelle)');
+  });
+
+  // Entering "Période" with a past year used to show a single current-year map,
+  // with nothing indicating that a day had to be clicked to get the comparison.
+  test('a past year gives two maps in either tab, without clicking a day first', () => {
+    for (const mode of ['period', 'day']) {
+      const html = heatmapContainerHTML(makeState({ mode, selectedYear: 1976, dateSelected: false }));
+      expect(html, mode).toContain('heatmap-card--wide');
+      expect(html, mode).toContain('(Actuelle)');
+      expect(html, mode).toContain('1976');
+    }
+  });
+
+  test('the current year gives one map — there is nothing to compare', () => {
+    for (const mode of ['period', 'day']) {
+      const html = heatmapContainerHTML(makeState({ mode, selectedYear: 2026, dateSelected: true }));
+      expect(html, mode).not.toContain('heatmap-card--wide');
+    }
+  });
+
+  // The card and the layout around it read the same predicate; when they drifted,
+  // views.js stacked for a comparison the card had rendered as a single map.
+  test('the panel layout agrees with the card it wraps', () => {
+    for (const selectedYear of [1976, 2026]) {
+      for (const mode of ['period', 'day']) {
+        for (const dateSelected of [true, false]) {
+          const state = makeState({ mode, selectedYear, dateSelected });
+          const panel = machineContentHTML(state, derive(state));
+          expect(panel.includes('machine-layout--stacked'), JSON.stringify({ mode, selectedYear, dateSelected }))
+            .toBe(panel.includes('heatmap-card--wide'));
+        }
+      }
+    }
   });
 });
 

@@ -7,7 +7,7 @@ import {
 } from './lib/weather.js';
 import { viewLoading, viewError, viewApp, derive, machineContentHTML, heroHTML } from './components/views.js';
 import { renderChart } from './components/chart.js';
-import { heatmapContainerHTML, preloadFrancePaths } from './components/heatmap.js';
+import { heatmapContainerHTML, preloadFrancePaths, showsDualMaps } from './components/heatmap.js';
 import { parseHash, writeHash } from './lib/urlstate.js';
 import { loadLaws, getLoadedLaws } from './lib/laws-data.js';
 import { escapeHtml } from './lib/html.js';
@@ -214,7 +214,7 @@ function redrawApp() {
 /** Maps + full-detail window for whatever year is currently selected. */
 function refreshSelectedYearData() {
   const dayMmdd = monthDay(isoToDate(state.selectedIso));
-  if (state.dateSelected) loadHeatmap(state.currentYear, dayMmdd);
+  if (showsDualMaps(state)) loadHeatmap(state.currentYear, dayMmdd);
   loadHeatmap(state.selectedYear, dayMmdd);
   ensureYearDetail(state.selectedYear);
 }
@@ -288,12 +288,9 @@ function bindApp() {
   // Load only the maps the current view needs. The currentYear map is constant;
   // the selectedYear map is what changes while dragging — so debounce map loads
   // and never fire one per intermediate slider tick.
-  const dualMaps = () =>
-    (state.mode === 'period' && state.dateSelected) ||
-    (state.mode === 'day' && state.selectedYear !== state.currentYear);
   const refreshMaps = () => {
     const dayMmdd = monthDay(isoToDate(state.selectedIso));
-    if (dualMaps()) loadHeatmap(state.currentYear, dayMmdd);
+    if (showsDualMaps(state)) loadHeatmap(state.currentYear, dayMmdd);
     loadHeatmap(state.selectedYear, dayMmdd);
     ensureYearDetail(state.selectedYear); // precip/wind/code + the period window
   };

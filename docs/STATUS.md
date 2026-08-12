@@ -13,6 +13,19 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Cartes : la comparaison à deux cartes s'affiche dès qu'une année passée est choisie** — 2026-08-12.
+  En « Période », les deux cartes exigeaient en plus un **clic sur un jour du bandeau** : en entrant dans
+  l'onglet on ne voyait qu'une seule carte, sans rien qui indique comment obtenir la comparaison. La
+  règle était **dupliquée dans 3 fichiers** et avait divergé (`views.js` avait perdu le garde
+  « année ≠ année en cours », donc la mise en page pouvait s'empiler pour une carte simple). Extraite en
+  `showsDualMaps(state)` dans `heatmap.js`, utilisée par `views.js` et `main.js`. Règle unique :
+  **deux cartes ⟺ année sélectionnée ≠ année en cours**, dans les deux onglets. Test de cohérence
+  panneau/carte sur les 8 combinaisons.
+- **Badge d'écart : couleur neutre pour Pluie et Vent** — 2026-08-12. Le badge réutilisait les teintes
+  chaud/froid de la température pour toutes les mesures (« +12 mm » en orange). `tone` par mesure : seule
+  la température garde sa teinte, la pluie et le vent passent en neutre encre pleine. Au passage, le
+  seuil « écart significatif » (0,3, calibré en °C) devient `noticeable` par unité — 1 mm, 2 km/h — pour
+  que la phrase n'affirme plus « plus venté » sur +1 km/h.
 - **Période : l'écart moyen dit enfin par rapport à quoi** — 2026-08-12. Le badge affichait « -4.8°
   d'écart moyen sur 10 j » sans nommer sa référence : on pouvait le lire « 2026 est plus frais » **ou**
   « l'année passée était plus fraîche », et il s'affichait en bleu « froid » dans une app dont le propos

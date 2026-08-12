@@ -6,7 +6,7 @@ import { baselineMean, baselineMedian, linearFit } from '../lib/stats.js';
 import { heatColor, heatGradient } from '../lib/color.js';
 import { renderChart } from './chart.js';
 import { periodHTML } from './period.js';
-import { heatmapContainerHTML } from './heatmap.js';
+import { heatmapContainerHTML, showsDualMaps } from './heatmap.js';
 import { politicsHTML } from './politics.js';
 import { ARCHIVE_START_YEAR } from '../lib/weather.js';
 
@@ -145,9 +145,7 @@ export function machineContentHTML(state, d) {
   }
 
   const heatmap = heatmapContainerHTML(state);
-  const showDualMaps =
-    (state.mode === 'period' && state.dateSelected) ||
-    (state.mode === 'day' && state.selectedYear !== state.currentYear);
+  const showDualMaps = showsDualMaps(state); // must match what the card rendered
 
   const content = state.mode === 'period'
     ? periodHTML(state)
