@@ -169,7 +169,32 @@ export function periodHTML(state) {
   const F = metric.field;
   const recent = alignWindow(state.recent, len);
   const isCurrent = state.selectedYear === state.currentYear;
-  const past = isCurrent ? recent : alignWindow(state.windows[state.selectedYear], len);
+  const pastRows = state.windows?.[state.selectedYear];
+
+  const metricChips = Object.entries(PERIOD_METRICS)
+    .map(
+      ([k, m]) =>
+        `<button class="chip chip--sm" data-metric="${k}" aria-pressed="${(state.periodMetric ?? 'tmax') === k}">${m.label}</button>`,
+    )
+    .join('');
+  const toolbar = `
+      <div class="period__toolbar">
+        <span class="chips__lab">Mesure&nbsp;:</span>
+        <div class="chips" role="group" aria-label="Mesure comparée" data-role="metric-chips">${metricChips}</div>
+      </div>`;
+
+  // The comparison year's days are fetched on demand — say so rather than
+  // rendering a strip full of dashes that reads like missing data. The toolbar
+  // stays mounted so the controls don't flicker out from under the pointer.
+  if (!isCurrent && !pastRows) {
+    return `<div class="period">${toolbar}
+      <div class="period--loading" role="status">
+        <div class="spinner"></div>
+        <p class="muted">Chargement des ${len} jours de ${state.selectedYear}…</p>
+      </div>
+    </div>`;
+  }
+  const past = isCurrent ? recent : alignWindow(pastRows, len);
 
   const rVals = recent.map((r) => r?.[F]);
   const pVals = past.map((r) => r?.[F]);
@@ -178,19 +203,8 @@ export function periodHTML(state) {
   const dMean = rMean != null && pMean != null ? rMean - pMean : null;
   const dir = dMean == null ? 'flat' : dMean > 0.3 ? 'warm' : dMean < -0.3 ? 'cold' : 'flat';
 
-  const metricChips = Object.entries(PERIOD_METRICS)
-    .map(
-      ([k, m]) =>
-        `<button class="chip chip--sm" data-metric="${k}" aria-pressed="${(state.periodMetric ?? 'tmax') === k}">${m.label}</button>`,
-    )
-    .join('');
-
   return `
-    <div class="period">
-      <div class="period__toolbar">
-        <span class="chips__lab">Mesure&nbsp;:</span>
-        <div class="chips" role="group" aria-label="Mesure comparée" data-role="metric-chips">${metricChips}</div>
-      </div>
+    <div class="period">${toolbar}
       <div class="period__summary">
         <div class="psum">
           ${summaryStat(`Cette année (${state.currentYear})`, rMean, median(rVals), metric.fmt)}

@@ -8,6 +8,7 @@ import { renderChart } from './chart.js';
 import { periodHTML } from './period.js';
 import { heatmapContainerHTML } from './heatmap.js';
 import { politicsHTML } from './politics.js';
+import { ARCHIVE_START_YEAR } from '../lib/weather.js';
 
 export function viewLoading(msg = 'Localisation en cours…') {
   return `<div class="state" role="status">
@@ -36,13 +37,20 @@ export function derive(state) {
   const baselineMed = hasHistory ? baselineMedian(series, 30) : null;
   const fit = hasHistory ? linearFit(series.map((d) => ({ x: d.year, y: d.tmax }))) : null;
   const perDecade = fit ? fit.slope * 10 : null;
-  const firstYear = hasHistory ? series[0]?.year : 1940;
-  const lastYear = hasHistory ? series[series.length - 1]?.year : new Date().getFullYear();
+  const firstYear = hasHistory ? series[0]?.year : ARCHIVE_START_YEAR;
+  const lastYear = hasHistory ? series[series.length - 1]?.year : state.currentYear;
+  // Slider bounds are the archive's own limits, not the loaded extent: the record
+  // arrives in two passes and a range that grew under the user's thumb would jump.
+  const sliderMin = ARCHIVE_START_YEAR;
+  const sliderMax = state.currentYear;
   // climate signal = trend-line rise across the whole record (not today's weather noise)
   const climateRise = fit ? fit.predict(lastYear) - fit.predict(firstYear) : null;
   // daily anomaly = today's max vs the 30-yr normal for this calendar day (weather, not climate)
   const vsNormal = baseline != null && today.tmax != null ? today.tmax - baseline : null;
-  return { loT, hiT, baseline, baselineMed, fit, perDecade, climateRise, vsNormal, firstYear, lastYear };
+  return {
+    loT, hiT, baseline, baselineMed, fit, perDecade, climateRise, vsNormal,
+    firstYear, lastYear, sliderMin, sliderMax,
+  };
 }
 
 function metric(k, v) {
@@ -50,7 +58,7 @@ function metric(k, v) {
 }
 
 // ---- hero (today + 10 years ago + warming trend) ----
-function heroHTML(state, d) {
+export function heroHTML(state, d) {
   const { today, dayLabel } = state;
   const w = describeWeather(today.code);
   const glow = heatColor(today.tmax);
@@ -244,11 +252,11 @@ export function viewApp(state) {
           <span class="rail__now tabular" data-role="rail-year">${sel}</span>
           <span class="rail__hint">glissez pour changer d’année</span>
         </div>
-        <input class="slider" type="range" min="${d.firstYear}" max="${d.lastYear}" step="1"
+        <input class="slider" type="range" min="${d.sliderMin}" max="${d.sliderMax}" step="1"
                value="${sel}" data-role="slider" ${state.historyLoaded ? '' : 'disabled'}
-               aria-label="Année" aria-valuemin="${d.firstYear}" aria-valuemax="${d.lastYear}" aria-valuenow="${sel}" />
+               aria-label="Année" aria-valuemin="${d.sliderMin}" aria-valuemax="${d.sliderMax}" aria-valuenow="${sel}" />
         <div class="rail__scale">
-          <span>${d.firstYear}</span><span>${Math.round((d.firstYear + d.lastYear) / 2)}</span><span>${d.lastYear}</span>
+          <span>${d.sliderMin}</span><span>${Math.round((d.sliderMin + d.sliderMax) / 2)}</span><span>${d.sliderMax}</span>
         </div>
         <div class="chips" data-role="window-chips" role="group" aria-label="Longueur de la période"${state.mode === 'period' ? '' : ' hidden'}>
           <span class="chips__lab">Période&nbsp;:</span>
@@ -273,9 +281,12 @@ export function viewApp(state) {
       <div class="chart-card reveal">
         <div class="chart-wrap" data-role="chart">
           ${state.historyLoaded
-            ? renderChart(state.series, sel)
-            : `<div class="chart-loading"><div class="spinner"></div><p>Chargement des 85 ans d'historique...</p></div>`}
+            ? renderChart(state.series, sel, d.sliderMin, d.sliderMax)
+            : `<div class="chart-loading"><div class="spinner"></div><p>Chargement de l’historique…</p></div>`}
         </div>
+        ${state.historyLoaded && !state.deepLoaded
+          ? `<p class="chart-progress" role="status">Tendance calculée depuis ${d.firstYear} · les années ${d.sliderMin}–${d.firstYear - 1} se chargent…</p>`
+          : ''}
         <div class="chart-legend">
           <span><i class="scale-bar" style="background:${heatGradient()}"></i> froid → chaud (°C)</span>
           <span><i class="swatch" style="background:var(--color-accent)"></i> tendance longue durée</span>

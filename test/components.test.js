@@ -64,6 +64,27 @@ describe('renderChart', () => {
     expect(svg).toContain(heatColor(40));
     expect(svg).toContain(heatColor(8));
   });
+
+  // While the deep pass is still downloading, the axis already spans the whole
+  // record but the fit only knows the recent years — drawing the trend across
+  // the full axis would extrapolate a 30-year slope back to 1940 as if measured.
+  test('pins the axis to the given bounds without extrapolating the trend', () => {
+    const recentOnly = [
+      { year: 2000, tmax: 20 },
+      { year: 2010, tmax: 22 },
+      { year: 2020, tmax: 24 },
+    ];
+    const svg = renderChart(recentOnly, 2020, 1940, 2020);
+
+    expect(svg).toContain('>1940<'); // axis tick: full record is already scaled in
+    expect(svg).toContain('2000 à 2020'); // label states the real extent, not the axis
+
+    const trend = svg.match(/<line x1="([\d.]+)"[^>]*class="trend"/);
+    const dots = [...svg.matchAll(/<circle cx="([\d.]+)"/g)].map((m) => Number(m[1]));
+    // The trend starts at the first *fitted* year, not at the left edge of the axis.
+    expect(Number(trend[1])).toBeCloseTo(Math.min(...dots), 1);
+    expect(Number(trend[1])).toBeGreaterThan(44); // 44 = plot-area left edge (1940)
+  });
 });
 
 // ---------- period ----------

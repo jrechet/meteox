@@ -19,16 +19,19 @@ function niceBounds(min, max) {
 /**
  * @param {{year:number,tmax:number}[]} series ascending
  * @param {number} selectedYear
+ * @param {number} [axisFrom] pin the x axis to the full record instead of the
+ *   loaded extent, so points settle in place as later passes arrive
+ * @param {number} [axisTo]
  * @returns {string} svg markup
  */
-export function renderChart(series, selectedYear) {
+export function renderChart(series, selectedYear, axisFrom, axisTo) {
   const pts = series.filter((d) => d.tmax != null);
   if (pts.length < 2) return '<p class="section__note">Données insuffisantes pour tracer la tendance.</p>';
 
   const years = pts.map((d) => d.year);
   const temps = pts.map((d) => d.tmax);
-  const minYear = years[0];
-  const maxYear = years[years.length - 1];
+  const minYear = axisFrom ?? years[0];
+  const maxYear = axisTo ?? years[years.length - 1];
   const [loT, hiT] = niceBounds(Math.min(...temps), Math.max(...temps));
 
   const xOf = (yr) => PAD.left + ((yr - minYear) / (maxYear - minYear || 1)) * plotW;
@@ -64,13 +67,15 @@ export function renderChart(series, selectedYear) {
       `<text x="${W - PAD.right}" y="${(y - 6).toFixed(1)}" class="ax ax--med">médiane ${Math.round(med)}°</text>`;
   }
 
-  // --- regression line ---
+  // --- regression line, drawn only across the years actually fitted ---
   let trendLine = '';
   if (fit) {
-    const x1 = xOf(minYear);
-    const y1 = yOf(fit.predict(minYear));
-    const x2 = xOf(maxYear);
-    const y2 = yOf(fit.predict(maxYear));
+    const from = years[0];
+    const to = years[years.length - 1];
+    const x1 = xOf(from);
+    const y1 = yOf(fit.predict(from));
+    const x2 = xOf(to);
+    const y2 = yOf(fit.predict(to));
     trendLine = `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}" class="trend"/>`;
   }
 
@@ -106,7 +111,7 @@ export function renderChart(series, selectedYear) {
 
   return `
     <svg class="chart" viewBox="0 0 ${W} ${H}" role="img"
-         aria-label="Température maximale de ce jour, ${minYear} à ${maxYear}"
+         aria-label="Température maximale de ce jour, ${years[0]} à ${years[years.length - 1]}"
          preserveAspectRatio="xMidYMid meet">
       <style>
         .grid { stroke: var(--color-line); stroke-width: 1; }
