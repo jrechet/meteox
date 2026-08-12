@@ -152,39 +152,39 @@ async function loadHistoryInBackground(location, token) {
   const { mmdd, todayIso, currentYear } = state;
   const recentFrom = Math.max(ARCHIVE_START_YEAR, currentYear - (RECENT_SPAN - 1));
 
-  const deep = recentFrom > ARCHIVE_START_YEAR
-    ? fetchSeries(lat, lon, mmdd, todayIso, ARCHIVE_START_YEAR, recentFrom - 1)
-    : Promise.resolve([]);
-  deep.catch(() => {}); // handled below; keeps the rejection from going unhandled
-
-  try {
-    const recent = await fetchSeries(lat, lon, mmdd, todayIso, recentFrom, currentYear);
-    if (token !== loadToken) return;
-    mergeSeries(recent);
+  // Each pass stands on its own. Open-Meteo rate-limits by request weight, so one
+  // of the two can 429 while the other lands — whichever years arrive get drawn
+  // rather than thrown away with an "indisponible" on a half-successful load.
+  let landed = 0;
+  const apply = (rows) => {
+    if (token !== loadToken || !rows.length) return;
+    mergeSeries(rows);
+    const isFirst = landed++ === 0;
     state.historyLoaded = true;
     applyPendingRestore();
     redrawApp();
-    refreshSelectedYearData();
-    ensureYearDetail(state.currentYear - 10); // "il y a 10 ans" hero vignette
-  } catch (err) {
-    if (token !== loadToken) return;
-    console.warn('Failed to load recent history:', err);
+    if (isFirst) {
+      refreshSelectedYearData();
+      ensureYearDetail(state.currentYear - 10); // "il y a 10 ans" hero vignette
+    }
+  };
+  const pass = (from, to, label) =>
+    fetchSeries(lat, lon, mmdd, todayIso, from, to).then(apply, (err) => {
+      console.warn(`Failed to load ${label} history:`, err);
+    });
+
+  await Promise.all([
+    pass(recentFrom, currentYear, 'recent'),
+    ...(recentFrom > ARCHIVE_START_YEAR ? [pass(ARCHIVE_START_YEAR, recentFrom - 1, 'deep')] : []),
+  ]);
+
+  if (token !== loadToken) return;
+  state.deepLoaded = true;
+  if (!landed) {
     const chartEl = root.querySelector('[data-role="chart"]');
     if (chartEl) chartEl.innerHTML = `<div class="chart-error">Historique météo indisponible</div>`;
     return;
   }
-
-  try {
-    const older = await deep;
-    if (token !== loadToken) return;
-    mergeSeries(older);
-  } catch (err) {
-    if (token !== loadToken) return;
-    // The recent decades are already on screen — the chart just stays shorter.
-    console.warn('Failed to load deep history:', err);
-  }
-  state.deepLoaded = true;
-  applyPendingRestore();
   redrawApp();
 }
 
