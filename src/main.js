@@ -1,8 +1,11 @@
 import './styles/app.css';
 import { isoToday, dayMonthLabel, monthDay, isoToDate } from './lib/format.js';
 import { currentPosition, reverseName, searchPlaces } from './lib/geo.js';
-import { fetchToday, fetchRecent, fetchHistory, fetchHeatmap, MAX_WINDOW } from './lib/weather.js';
-import { viewLoading, viewError, viewApp, derive, machineContentHTML } from './components/views.js';
+import {
+  fetchToday, fetchRecent, fetchSeries, fetchYearWindow, fetchHeatmap,
+  MAX_WINDOW, ARCHIVE_START_YEAR,
+} from './lib/weather.js';
+import { viewLoading, viewError, viewApp, derive, machineContentHTML, heroHTML } from './components/views.js';
 import { renderChart } from './components/chart.js';
 import { heatmapContainerHTML, preloadFrancePaths } from './components/heatmap.js';
 import { parseHash, writeHash } from './lib/urlstate.js';
@@ -13,9 +16,19 @@ import { indicatorsWhyBodyHTML } from './components/politics.js';
 
 const syncUrl = () => writeHash(state);
 let pendingRestore = null;
+// Bumped on every load(). Requests in flight for the previous location resolve
+// against a stale token and drop their results instead of writing them into the
+// new place's state — the history passes and the per-year windows all outlive a
+// quick "Paris → Nice" switch otherwise.
+let loadToken = 0;
 
 const PARIS = { name: 'Paris', admin: 'Île-de-France', lat: 48.8566, lon: 2.3522 };
 const root = document.getElementById('app');
+
+// The history arrives in two passes so the chart is usable long before the whole
+// record is down: the recent decades first (where the slider starts and where
+// the "il y a 10 ans" comparison lives), then everything back to 1940.
+const RECENT_SPAN = 30;
 
 const now = new Date();
 const state = {
@@ -26,7 +39,8 @@ const state = {
   location: null,
   today: null,
   series: null,
-  windows: null, // { [year]: rows[] } — per-year N-day look-back windows
+  windows: {}, // { [year]: rows[] } — per-year N-day look-back windows, fetched on demand
+  pendingWindows: new Set(), // years whose window request is in flight
   recent: null, // real last MAX_WINDOW days of the current year (forecast)
   selectedYear: now.getFullYear(),
   mode: 'day', // 'day' | 'period'
@@ -34,7 +48,8 @@ const state = {
   periodMetric: 'tmax', // 'tmax' | 'precip' | 'wind' — Période chart metric
   mapMode: 'abs', // 'abs' | 'anom' — dual-map coloring
   selectedIso: isoToday(), // Active date for the heatmap
-  historyLoaded: false, // Flag for progressive loading
+  historyLoaded: false, // pass 1 (recent decades) in — chart + slider usable
+  deepLoaded: false, // pass 2 (back to 1940) in — full record plotted
   dateSelected: false, // Flag indicating user explicitly selected a date in the strip
 };
 
@@ -66,6 +81,7 @@ async function boot() {
 }
 
 async function load(location) {
+  const token = ++loadToken;
   state.location = location;
   render(viewLoading(`Chargement de la météo à ${location.name}…`));
   try {
@@ -74,13 +90,19 @@ async function load(location) {
       fetchToday(location.lat, location.lon),
       fetchRecent(location.lat, location.lon, MAX_WINDOW),
     ]);
+    if (token !== loadToken) return; // a newer place won the race
 
     state.today = today;
     state.recent = recent;
     state.historyLoaded = false;
+    state.deepLoaded = false;
     state.selectedYear = state.currentYear;
     state.selectedIso = state.todayIso;
     state.heatmaps = {};
+    // Everything below is location-scoped — a new place must not inherit it.
+    state.series = null;
+    state.windows = {};
+    state.pendingWindows.clear();
 
     // 2. Render initial dashboard instantly
     render(viewApp(state));
@@ -96,60 +118,135 @@ async function load(location) {
 
     syncUrl();
 
-    // 5. Load 85-year history in the background
-    loadHistoryInBackground(location);
+    // 5. Load the record back to 1940 in the background, in two passes
+    loadHistoryInBackground(location, token);
   } catch (err) {
+    if (token !== loadToken) return;
     console.error('Failed to load weather data:', err);
     render(viewError('Impossible de charger les données météo. Vérifiez la connexion.', { retry: true }));
     root.querySelector('[data-action="retry"]')?.addEventListener('click', () => load(location));
   }
 }
 
-async function loadHistoryInBackground(location) {
+/** Merge a pass into state.series, keeping it ascending and free of duplicates. */
+function mergeSeries(rows) {
+  const byYear = new Map((state.series ?? []).map((s) => [s.year, s]));
+  for (const row of rows) {
+    const prev = byYear.get(row.year);
+    byYear.set(row.year, prev ? { ...prev, ...row } : row);
+  }
+  // this year's point comes from the live forecast — the archive lags behind it
+  const cur = byYear.get(state.currentYear);
+  byYear.set(state.currentYear, { ...cur, year: state.currentYear, ...state.today });
+  state.series = [...byYear.values()].sort((a, b) => a.year - b.year);
+}
+
+/**
+ * History in two passes. Pass 1 covers the recent decades and unlocks the UI;
+ * pass 2 back-fills to 1940 and runs concurrently, so the deep record never
+ * gates first paint. Both are temperature-only — the remaining variables for
+ * whichever year is on screen come from ensureYearDetail().
+ */
+async function loadHistoryInBackground(location, token) {
+  const { lat, lon } = location;
+  const { mmdd, todayIso, currentYear } = state;
+  const recentFrom = Math.max(ARCHIVE_START_YEAR, currentYear - (RECENT_SPAN - 1));
+
+  const deep = recentFrom > ARCHIVE_START_YEAR
+    ? fetchSeries(lat, lon, mmdd, todayIso, ARCHIVE_START_YEAR, recentFrom - 1)
+    : Promise.resolve([]);
+  deep.catch(() => {}); // handled below; keeps the rejection from going unhandled
+
   try {
-    const history = await fetchHistory(location.lat, location.lon, state.mmdd, state.todayIso);
-    const { series, windows } = history;
-
-    // fill this year's point from live forecast if the archive lags
-    const cur = series.find((s) => s.year === state.currentYear);
-    if (!cur) series.push({ year: state.currentYear, ...state.today });
-    else if (cur.tmax == null) Object.assign(cur, state.today);
-
-    state.windows = windows;
-    state.series = series;
+    const recent = await fetchSeries(lat, lon, mmdd, todayIso, recentFrom, currentYear);
+    if (token !== loadToken) return;
+    mergeSeries(recent);
     state.historyLoaded = true;
-
-    // Apply a restored view from a shared link now that the range is known.
-    if (pendingRestore) {
-      const r = pendingRestore;
-      pendingRestore = null;
-      const first = series[0]?.year ?? state.currentYear;
-      const last = series[series.length - 1]?.year ?? state.currentYear;
-      if (r.win) state.windowLen = r.win;
-      if (r.year != null) state.selectedYear = Math.min(last, Math.max(first, r.year));
-      if (r.date) {
-        state.selectedIso = r.date;
-        state.dateSelected = true;
-      }
-      if (r.mode) state.mode = r.mode;
-      syncUrl();
-    }
-
-    // Re-render full app dashboard with enabled history elements
-    render(viewApp(state));
-    bindApp();
-    revealOnScroll();
-
-    // Fetch heatmap(s) for the selected date/year (current year too if dual maps)
-    const dayMmdd = monthDay(isoToDate(state.selectedIso));
-    if (state.dateSelected) loadHeatmap(state.currentYear, dayMmdd);
-    loadHeatmap(state.selectedYear, dayMmdd);
+    applyPendingRestore();
+    redrawApp();
+    refreshSelectedYearData();
+    ensureYearDetail(state.currentYear - 10); // "il y a 10 ans" hero vignette
   } catch (err) {
-    console.warn('Failed to load background history:', err);
+    if (token !== loadToken) return;
+    console.warn('Failed to load recent history:', err);
     const chartEl = root.querySelector('[data-role="chart"]');
-    if (chartEl) {
-      chartEl.innerHTML = `<div class="chart-error">Historique météo indisponible</div>`;
+    if (chartEl) chartEl.innerHTML = `<div class="chart-error">Historique météo indisponible</div>`;
+    return;
+  }
+
+  try {
+    const older = await deep;
+    if (token !== loadToken) return;
+    mergeSeries(older);
+  } catch (err) {
+    if (token !== loadToken) return;
+    // The recent decades are already on screen — the chart just stays shorter.
+    console.warn('Failed to load deep history:', err);
+  }
+  state.deepLoaded = true;
+  applyPendingRestore();
+  redrawApp();
+}
+
+/** Apply a view restored from a shared link, once the year range can clamp it. */
+function applyPendingRestore() {
+  if (!pendingRestore) return;
+  const r = pendingRestore;
+  pendingRestore = null;
+  if (r.win) state.windowLen = r.win;
+  if (r.year != null) {
+    state.selectedYear = Math.min(state.currentYear, Math.max(ARCHIVE_START_YEAR, r.year));
+  }
+  if (r.date) {
+    state.selectedIso = r.date;
+    state.dateSelected = true;
+  }
+  if (r.mode) state.mode = r.mode;
+  syncUrl();
+}
+
+function redrawApp() {
+  render(viewApp(state));
+  bindApp();
+  revealOnScroll();
+}
+
+/** Maps + full-detail window for whatever year is currently selected. */
+function refreshSelectedYearData() {
+  const dayMmdd = monthDay(isoToDate(state.selectedIso));
+  if (state.dateSelected) loadHeatmap(state.currentYear, dayMmdd);
+  loadHeatmap(state.selectedYear, dayMmdd);
+  ensureYearDetail(state.selectedYear);
+}
+
+/**
+ * Precipitation, wind and weather code for one year — the variables left out of
+ * the bulk series. Fills state.windows[year] (the "Période" strip) and folds the
+ * target day back into state.series (the focus card and hero vignette).
+ */
+async function ensureYearDetail(year) {
+  if (year === state.currentYear) return; // covered by fetchRecent + fetchToday
+  if (state.windows[year] || state.pendingWindows.has(year)) return;
+  const token = loadToken;
+  const { lat, lon } = state.location;
+  state.pendingWindows.add(year);
+  try {
+    const rows = await fetchYearWindow(lat, lon, state.mmdd, year);
+    if (token !== loadToken) return; // these are another place's days now
+    state.windows[year] = rows;
+    const day = rows[rows.length - 1];
+    const entry = state.series?.find((s) => s.year === year);
+    if (entry && day) Object.assign(entry, { ...day, year });
+    // Only repaint the swappable panel: a full redraw here would fight the slider.
+    const contentEl = root.querySelector('[data-role="machine-content"]');
+    if (contentEl?.isConnected && state.mode !== 'politics') {
+      contentEl.innerHTML = machineContentHTML(state, derive(state));
     }
+    refreshHeroVignette();
+  } catch (err) {
+    console.warn(`Failed to load detail for ${year}:`, err);
+  } finally {
+    state.pendingWindows.delete(year);
   }
 }
 
@@ -198,6 +295,7 @@ function bindApp() {
     const dayMmdd = monthDay(isoToDate(state.selectedIso));
     if (dualMaps()) loadHeatmap(state.currentYear, dayMmdd);
     loadHeatmap(state.selectedYear, dayMmdd);
+    ensureYearDetail(state.selectedYear); // precip/wind/code + the period window
   };
   let mapTimer;
   const refreshMapsDebounced = () => {
@@ -213,7 +311,7 @@ function bindApp() {
     slider.setAttribute('aria-valuenow', yr);
     renderContent(); // focus card or period strip (shows map placeholders)
     if (state.historyLoaded) {
-      chartEl.innerHTML = renderChart(state.series, yr); // decade chart highlight
+      chartEl.innerHTML = renderChart(state.series, yr, d.sliderMin, d.sliderMax); // decade chart highlight
     }
     refreshMapsDebounced(); // a single map fetch once the drag settles
     syncUrl();
@@ -414,6 +512,14 @@ function updateHeatmapsForSelectedDate() {
 
   loadHeatmap(state.currentYear, dayMmdd);
   loadHeatmap(state.selectedYear, dayMmdd);
+}
+
+/** Repaint the hero in place — used when a year's detail lands after first paint. */
+function refreshHeroVignette() {
+  const hero = root.querySelector('.hero-vignettes');
+  if (!hero) return;
+  hero.outerHTML = heroHTML(state, derive(state));
+  root.querySelectorAll('.hero-vignettes .reveal').forEach((el) => el.classList.add('in'));
 }
 
 function refreshHeatmapUI() {

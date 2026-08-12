@@ -135,10 +135,20 @@ Permettre à l'utilisateur de simuler la météo des jours précédents (jusqu'�
 
 ### Analyse du travail accompli par le précédent agent :
 Le travail d'infrastructure et d'interface utilisateur est **extrêmement avancé** et très propre :
-1. **Cache LocalStorage mis à niveau** : Passage au namespace `mx:v2` pour stocker de façon compacte les séries historiques et les fenêtres de jours glissants.
+1. **Cache LocalStorage** : namespace `mx:v3`, une entrée par plage d'années (série compacte en tuples
+   `[année, tmax, tmin]`) et une par fenêtre annuelle — ~2,6 kB au lieu des ~249 kB de `mx:v2`, qui
+   dépassaient le quota au bout d'une vingtaine de lieux et annulaient tout le cache en silence.
 2. **Récupération des données multi-jours** :
    * `fetchRecent` récupère les 30 derniers jours de l'année en cours via le paramètre `past_days` de l'API Open-Meteo Forecast.
-   * `fetchHistory` récupère la totalité de la série ERA5 depuis 1940 et isole à la fois le point du jour calendaire (`series`) et une fenêtre de 30 jours se terminant ce jour calendaire pour chaque année historique (`windows`).
+   * `fetchSeries(lat, lon, mmdd, todayIso, fromYear, toYear)` ne demande que les **deux températures**
+     sur la plage donnée et en isole le point du jour calendaire de chaque année. `main.js` l'appelle
+     **deux fois en parallèle** : les 30 dernières années (débloque graphe + curseur en ~0,4 s), puis
+     1940 → cette borne en tâche de fond.
+   * `fetchYearWindow(lat, lon, mmdd, year)` récupère **à la demande** les 30 jours se terminant sur ce
+     jour calendaire, avec les 5 variables : c'est la source du bandeau « Période » et des champs
+     pluie/vent/code météo de la carte focus et de la vignette « il y a 10 ans ».
+   * ⚠️ Open-Meteo facture au **poids** (variables × jours) : élargir la série longue à une variable de
+     plus coûte bien plus cher que d'ajouter une requête. Voir les notes de passation de `docs/STATUS.md`.
 3. **Mise en place de l'UI** :
    * Des onglets **Jour même** et **Période** ont été ajoutés pour alterner entre le focus historique standard et la comparaison de fenêtres multi-jours.
    * Des boutons de sélection (puces/chips) permettent de choisir des périodes de **5**, **10** ou **30 jours**.

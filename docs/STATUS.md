@@ -1,6 +1,6 @@
 # Project Status — meteox · onglet « Lois & Climat »
 
-_Last updated: 2026-08-05 · politique Renovate globale corrigée côté server-app (plus de majeures, automerge minor/patch, default branch only) ; CI sur Node 24 ; dépôt à une seule branche (`main`)._
+_Last updated: 2026-08-12 · premier chargement de l'onglet Climat ramené de ~8,6 s à ~0,4 s (historique en deux passes, températures seules ; les autres variables à la demande)._
 
 > 📍 **Lis-moi en premier.** Tableau de bord compact tenu à jour à chaque livraison (skill
 > `status-tracking`, enforced par le Stop hook `status-tracker.sh`). Historique détaillé = issues
@@ -13,6 +13,16 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Climat : premier chargement ~8,6 s → ~0,4 s** — 2026-08-12. L'onglet attendait **une** requête ERA5
+  `1940→aujourd'hui × 5 variables` (1,1 Mo, TTFB 7,6 s) dont **91,8 % du payload était jeté**
+  (31 631 jours téléchargés, 2 580 utilisés). Désormais : la série longue ne demande que les **deux
+  températures** (les 3 autres variables coûtent ~4,5× le temps d'extraction serveur) et arrive en
+  **deux passes concurrentes** — 30 dernières années d'abord (0,37 s, débloque graphe + curseur), retour
+  à 1940 en fond ; **précipitations/vent/code météo à la demande**, une fenêtre de 30 j pour l'année
+  affichée (~130 ms, 1,5 kB), qui sert aussi le bandeau « Période ». Le cache `localStorage` passe de
+  ~249 kB à ~2,6 kB par lieu/jour (il dépassait le quota au bout d'une vingtaine de lieux, `writeCache`
+  avalait l'exception → plus aucun cache et 8 s repayées à chaque visite). Bornes du curseur figées à
+  1940–année courante pour que la plage ne bouge plus sous le pouce. (closes #74)
 - **Politique Renovate globale corrigée (côté `server-app`, hors dépôt)** — 2026-08-05. Le
   `renovate/config.js` self-hosted n'impose plus `baseBranches: ['main','master']` (chaque dépôt est
   suivi sur sa branche par défaut — le WARN « Base branch does not exist » du dashboard #11 disparaît
@@ -62,6 +72,22 @@ Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec a
   attente au 05/08) · purge des ~515 enregistrements de runners éphémères morts (côté serveur).
 
 ## 🔑 Handoff notes (à ne pas réapprendre à la dure)
+- **Open-Meteo facture au poids (variables × jours), pas à la requête.** Une requête
+  `1940→2026 × 5 variables` consomme à elle seule ~la limite minute du plan gratuit : pendant les mesures
+  du 12/08, elle a suffi à faire tomber les appels suivants en `429 Minutely API request limit exceeded`.
+  Corollaire : **ajouter une variable à la série longue est bien plus cher qu'ajouter une requête**.
+  Les variables non-températures se demandent par fenêtre de 30 j (`fetchYearWindow`), jamais en masse.
+- **`&models=era5` est un piège** : mesuré à **49 s** contre 8,6 s pour le modèle par défaut sur la même
+  plage. Ne pas « préciser » le modèle en croyant optimiser.
+- **Les temps de réponse Open-Meteo varient énormément** selon la chaleur de leur cache (même requête
+  mesurée à 0,13 s puis 3,5 s). Toujours mesurer sur des coordonnées neuves et espacer les appels avant
+  de conclure à une régression.
+- **Le graphe des décennies a un axe X figé (1940→année courante)** pendant que la 2ᵉ passe charge, mais
+  la **droite de tendance ne se trace que sur les années réellement ajustées** — l'étendre à tout l'axe
+  extrapolerait une pente de 30 ans jusqu'en 1940 comme si elle était mesurée. Test de garde :
+  `components.test.js` › « pins the axis to the given bounds without extrapolating the trend ».
+- **`loadToken`** (`main.js`) invalide les requêtes d'un lieu précédent : sans lui, un « Paris → Nice »
+  rapide écrit les jours de Paris dans l'état de Nice.
 - **Snapshot front = état SEED.** `src/data/laws-snapshot.json` reste l'état seed (sans facette `senat`) :
   `LawsApiTest` le compare à un backend frais. La donnée live (Sénat, votes) vient de l'API au runtime.
 - **Cache open data empoisonné** : zip corrompu + ETag = 304 éternel. Auto-guérison en place (#55). Si

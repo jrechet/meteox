@@ -93,6 +93,36 @@ describe('main.js (jsdom integration)', () => {
     expect(document.querySelector('.chip[data-metric="wind"]').getAttribute('aria-pressed')).toBe('true');
   });
 
+  // Guards the load strategy: asking the archive for all five daily variables
+  // across the whole record was the 8s first paint this replaced.
+  test('history loads in two temperature-only passes', () => {
+    const archive = global.fetch.mock.calls
+      .map((c) => String(c[0]))
+      .filter((u) => u.includes('/v1/archive') && !/latitude=[\d.-]+,/.test(u));
+
+    const bulk = archive.filter((u) => u.includes('daily=temperature_2m_max,temperature_2m_min&'));
+    const starts = bulk.map((u) => u.match(/start_date=(\d{4}-\d{2}-\d{2})/)[1]);
+    const recentFrom = `${new Date().getFullYear() - 29}-01-01`;
+
+    expect(starts).toContain(recentFrom); // pass 1 — unlocks the UI
+    expect(starts).toContain('1940-01-01'); // pass 2 — deep record, in background
+    // Nothing pulls precipitation/wind/weather-code across the decades.
+    expect(archive.filter((u) => u.includes('weather_code') && u.includes('1940-01-01'))).toEqual([]);
+  });
+
+  test('a past year fetches its own 30-day window on demand', () => {
+    const windows = global.fetch.mock.calls
+      .map((c) => String(c[0]))
+      .filter((u) => u.includes('/v1/archive') && u.includes('weather_code') && !/latitude=[\d.-]+,/.test(u));
+
+    expect(windows.length).toBeGreaterThan(0);
+    for (const url of windows) {
+      const start = new Date(url.match(/start_date=(\d{4}-\d{2}-\d{2})/)[1]);
+      const end = new Date(url.match(/end_date=(\d{4}-\d{2}-\d{2})/)[1]);
+      expect(Math.round((end - start) / 864e5)).toBe(29); // MAX_WINDOW days inclusive
+    }
+  });
+
   test('interactions are persisted to the URL hash', () => {
     expect(location.hash).toContain('mode=period');
     expect(location.hash).toMatch(/lat=/);
