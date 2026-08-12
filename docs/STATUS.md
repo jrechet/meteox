@@ -13,6 +13,17 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **E2E : toutes les features du site sont couvertes** — 2026-08-12. La suite passait de 22 à
+  **91 vérifications sur 13 features**, chacune déclarée dans `FEATURES` (`test/e2e.mjs`) : une feature
+  listée sans aucune vérification **fait échouer le run**, ce qui attrape une feature livrée sans test.
+  Ajouté : amorçage sans lien partagé (repli géoloc), vignettes du hero, graphe des décennies (bornes,
+  fusion des deux passes sans doublon, tendance), curseur → carte focus + graphe, règle des deux cartes
+  **dans les deux onglets et sans clic préalable**, bascule Absolu/Écart, chips 5/10/30, chips de mesure
+  + teintes du badge, restauration depuis un lien partagé, recherche de commune, filtres de lois,
+  modale d'interpellation (code postal → lettre), **pages de loi statiques + sitemap**, et l'absence de
+  débordement horizontal aux 4 breakpoints **sur les deux onglets** (le climat n'était testé qu'à 375).
+  `test:e2e` lance désormais `npm run build` (et non `vite build`) : les pages statiques sont générées,
+  donc testables. Vérifié que la suite **échoue** sur le code d'avant le correctif des cartes.
 - **Cartes : la comparaison à deux cartes s'affiche dès qu'une année passée est choisie** — 2026-08-12.
   En « Période », les deux cartes exigeaient en plus un **clic sur un jour du bandeau** : en entrant dans
   l'onglet on ne voyait qu'une seule carte, sans rien qui indique comment obtenir la comparaison. La
@@ -93,6 +104,18 @@ Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec a
   attente au 05/08) · purge des ~515 enregistrements de runners éphémères morts (côté serveur).
 
 ## 🔑 Handoff notes (à ne pas réapprendre à la dure)
+- **Toute nouvelle feature s'ajoute à `FEATURES` dans `test/e2e.mjs`** et doit y avoir au moins une
+  vérification, sinon le run échoue (« features with no e2e check »). C'est le garde-fou contre le
+  scénario du 12/08 : les cartes doubles « marchaient » en test parce que le test cliquait un jour avant
+  de compter les colonnes — il encodait la règle d'alors, pas ce que l'utilisateur rencontre en entrant
+  dans l'onglet. **Tester l'état d'arrivée d'une feature, pas seulement son chemin nominal.**
+- **`page.goto(base + '#autre-hash')` ne recharge pas la page** (navigation same-document) : `main.js`
+  ne rejoue pas et un test « restaure depuis un lien partagé » vérifie alors la vue précédente. Le
+  helper `bootTo()` passe par `about:blank` pour forcer un vrai chargement. Ça m'a fait croire une
+  minute à un bug de deep-link qui n'existait pas.
+- **`npm run test:e2e` lance `npm run build`** (pas `vite build`) pour que `dist/loi/<id>/` et
+  `sitemap.xml` existent : sans ça les pages statiques ne sont pas testables et le e2e ne teste pas ce
+  qui est réellement déployé.
 - **Open-Meteo facture au poids (variables × jours), pas à la requête.** Une requête
   `1940→2026 × 5 variables` consomme à elle seule ~la limite minute du plan gratuit : pendant les mesures
   du 12/08, elle a suffi à faire tomber les appels suivants en `429 Minutely API request limit exceeded`.
