@@ -13,6 +13,14 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Période : l'écart moyen dit enfin par rapport à quoi** — 2026-08-12. Le badge affichait « -4.8°
+  d'écart moyen sur 10 j » sans nommer sa référence : on pouvait le lire « 2026 est plus frais » **ou**
+  « l'année passée était plus fraîche », et il s'affichait en bleu « froid » dans une app dont le propos
+  est le réchauffement — d'où un signalement d'« inversion ». Vérifié : **aucune inversion**, ni dans les
+  données (août 2003 = canicule, moy 35,9 réels contre 31,5 en 2026 à Paris) ni dans le mapping
+  valeur → étiquette (sondé avec 10° vs 90°). Le badge énonce maintenant le sens : « 2026 plus frais que
+  2003, en moyenne sur 10 j », avec un vocabulaire par mesure (chaud/frais · pluvieux/sec · venté/moins
+  venté) et une invite (« glissez le curseur… ») sur l'année en cours, où il n'y a rien à comparer.
 - **Climat : premier chargement ~8,6 s → ~0,4 s** — 2026-08-12. L'onglet attendait **une** requête ERA5
   `1940→aujourd'hui × 5 variables` (1,1 Mo, TTFB 7,6 s) dont **91,8 % du payload était jeté**
   (31 631 jours téléchargés, 2 580 utilisés). Désormais : la série longue ne demande que les **deux
