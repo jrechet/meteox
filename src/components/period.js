@@ -4,10 +4,22 @@ import { fmtTemp, fmtSigned, fmtMm, fmtWind, shortDate, weekdayShort, describeWe
 import { mean, median } from '../lib/stats.js';
 
 // Metrics the "Période" chart + summary can plot. Strip stays temperature.
+// `up`/`down`/`same` phrase the écart from the *current* year's point of view —
+// the number alone ("-4,8°") reads equally well in either direction, and a blue
+// "colder" badge on a warming app is exactly where that ambiguity bites.
 export const PERIOD_METRICS = {
-  tmax: { field: 'tmax', label: 'Température', unit: '°', axis: '°', fmt: fmtTemp, step: 5, digits: 1 },
-  precip: { field: 'precip', label: 'Pluie', unit: ' mm', axis: '', fmt: fmtMm, step: 5, digits: 1 },
-  wind: { field: 'wind', label: 'Vent', unit: ' km/h', axis: '', fmt: fmtWind, step: 10, digits: 0 },
+  tmax: {
+    field: 'tmax', label: 'Température', unit: '°', axis: '°', fmt: fmtTemp, step: 5, digits: 1,
+    up: 'plus chaud', down: 'plus frais', same: 'aussi chaud',
+  },
+  precip: {
+    field: 'precip', label: 'Pluie', unit: ' mm', axis: '', fmt: fmtMm, step: 5, digits: 1,
+    up: 'plus pluvieux', down: 'plus sec', same: 'aussi pluvieux',
+  },
+  wind: {
+    field: 'wind', label: 'Vent', unit: ' km/h', axis: '', fmt: fmtWind, step: 10, digits: 0,
+    up: 'plus venté', down: 'moins venté', same: 'aussi venté',
+  },
 };
 
 const W = 960;
@@ -203,6 +215,17 @@ export function periodHTML(state) {
   const dMean = rMean != null && pMean != null ? rMean - pMean : null;
   const dir = dMean == null ? 'flat' : dMean > 0.3 ? 'warm' : dMean < -0.3 ? 'cold' : 'flat';
 
+  // Name both years and the direction: the signed number is measured from this
+  // year, but on its own it reads just as naturally the other way round.
+  // The tab opens on the current year, where there is nothing to compare yet —
+  // say what to do instead of "2026 aussi chaud que 2026".
+  const verdict = isCurrent
+    ? 'glissez le curseur pour comparer à une année passée'
+    : dMean == null
+      ? `comparaison indisponible sur ${len} j`
+      : `${state.currentYear} ${dMean > 0.3 ? metric.up : dMean < -0.3 ? metric.down : metric.same}` +
+        ` que ${state.selectedYear}, en moyenne sur ${len} j`;
+
   return `
     <div class="period">${toolbar}
       <div class="period__summary">
@@ -212,7 +235,7 @@ export function periodHTML(state) {
         </div>
         <div class="psum__delta" data-dir="${dir}">
           <span class="tabular">${dMean == null ? '—' : fmtSigned(dMean, metric.digits) + metric.unit}</span>
-          <span>d’écart moyen sur ${len} j</span>
+          <span class="psum__verdict">${verdict}</span>
         </div>
       </div>
       <div class="chart-wrap" data-role="period-chart">${dualChart(recent, past, state.selectedYear, state.currentYear, metric)}</div>

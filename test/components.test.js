@@ -109,6 +109,57 @@ describe('periodHTML', () => {
     expect(html).not.toContain('-0.0°'); // fmtSigned must not emit a signed zero
   });
 
+  // The signed number alone is ambiguous — "-4,8°" reads just as naturally as
+  // "the past year was 4,8° colder". The verdict must name both years and the
+  // direction, measured from the current year, and match the plotted lines.
+  describe('the écart badge states its reference', () => {
+    const FIELD = { tmax: 'tmax', precip: 'precip', wind: 'wind' };
+    const windowOf = (year, value, field) =>
+      Array.from({ length: 30 }, (_, i) => ({
+        ...day(`${year}-08-${String(i + 1).padStart(2, '0')}`, 20),
+        [field]: value,
+      }));
+
+    const withYears = (now, past, metric = 'tmax') =>
+      periodHTML(makeState({
+        mode: 'period',
+        periodMetric: metric,
+        selectedYear: 2003,
+        recent: windowOf(2026, now, FIELD[metric]),
+        windows: { 2003: windowOf(2003, past, FIELD[metric]) },
+      }));
+
+    test('a cooler current year is spelled out, not left to the sign', () => {
+      const html = withYears(31, 36); // août 2003 = canicule
+      expect(html).toContain('2026 plus frais que 2003, en moyenne sur 10 j');
+      expect(html).toContain('-5.0°');
+      expect(html).toContain('data-dir="cold"');
+    });
+
+    test('a warmer current year reads the other way round', () => {
+      const html = withYears(36, 31);
+      expect(html).toContain('2026 plus chaud que 2003, en moyenne sur 10 j');
+      expect(html).toContain('+5.0°');
+      expect(html).toContain('data-dir="warm"');
+    });
+
+    test('a negligible gap says so instead of claiming a direction', () => {
+      expect(withYears(30, 30.1)).toContain('2026 aussi chaud que 2003');
+    });
+
+    test('the wording follows the selected measure', () => {
+      expect(withYears(0, 12, 'precip')).toContain('2026 plus sec que 2003');
+      expect(withYears(40, 12, 'wind')).toContain('2026 plus venté que 2003');
+    });
+
+    // The tab opens on the current year, so this is the first thing users see.
+    test('the current year prompts instead of comparing 2026 to itself', () => {
+      const html = periodHTML(makeState({ mode: 'period', selectedYear: 2026 }));
+      expect(html).toContain('glissez le curseur pour comparer à une année passée');
+      expect(html).not.toContain('que 2026');
+    });
+  });
+
   test('metric toggle switches the plotted measure (temp/pluie/vent)', () => {
     const temp = periodHTML(makeState({ mode: 'period', periodMetric: 'tmax' }));
     expect(temp).toContain('data-metric="precip"');
