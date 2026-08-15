@@ -13,6 +13,14 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Animation des cartes : rejouer le jour choisi année après année** — 2026-08-15. Bouton
+  « ▶ Animer &lt;année&gt; → &lt;année courante&gt; » sur la carte double : la carte de droite défile année par
+  année (600 ms/image) pendant que celle de gauche reste la référence actuelle ; barre de progression,
+  arrêt, et reprise de la main dès que l'utilisateur touche curseur / onglet / puces / jour.
+  Contraintes API mesurées : **une image = 1 requête (20 villes)**, ~0,4 s à concurrence 4 — le
+  préchargement devance donc la lecture. Open-Meteo refuse au-delà d'une poignée de requêtes simultanées
+  (« Too many concurrent requests ») : concurrence plafonnée à 4, **ne pas l'augmenter à l'aveugle**.
+  Cadence vérifiée en navigateur réel : 612 ms de moyenne (607–619). (e2e : feature `animation des cartes`)
 - **E2E : toutes les features du site sont couvertes** — 2026-08-12. La suite passait de 22 à
   **91 vérifications sur 13 features**, chacune déclarée dans `FEATURES` (`test/e2e.mjs`) : une feature
   listée sans aucune vérification **fait échouer le run**, ce qui attrape une feature livrée sans test.
@@ -113,6 +121,10 @@ Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec a
   ne rejoue pas et un test « restaure depuis un lien partagé » vérifie alors la vue précédente. Le
   helper `bootTo()` passe par `about:blank` pour forcer un vrai chargement. Ça m'a fait croire une
   minute à un bug de deep-link qui n'existait pas.
+- **Ne jamais mesurer une cadence d'animation depuis un onglet masqué** : les navigateurs bornent
+  `setTimeout` à ~1 s en arrière-plan (et jusqu'à plusieurs secondes). Le 15/08, l'animation semblait
+  tourner à 1,3 s/image dans le volet caché alors qu'elle est à **612 ms** mesurée par Playwright au
+  premier plan. Mesurer avec Playwright, pas avec le volet navigateur.
 - **`npm run test:e2e` lance `npm run build`** (pas `vite build`) pour que `dist/loi/<id>/` et
   `sitemap.xml` existent : sans ça les pages statiques ne sont pas testables et le e2e ne teste pas ce
   qui est réellement déployé.

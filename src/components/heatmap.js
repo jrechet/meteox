@@ -185,7 +185,47 @@ export function renderMapSVG(data, year, opts = {}) {
  * drifted apart (views.js was missing the same-year guard).
  */
 export function showsDualMaps(state) {
-  return state.selectedYear !== state.currentYear;
+  // While the animation runs, the reference map stays put even on the last frame
+  // (which lands on the current year) — the layout must not collapse mid-run.
+  return state.selectedYear !== state.currentYear || Boolean(state.isPlaying);
+}
+
+/**
+ * "Animer" control: replays the chosen calendar day year by year, from the
+ * selected year up to today. Only offered when there is a span to replay.
+ */
+function playControlHTML(state) {
+  const to = state.currentYear;
+  // Nothing to replay from the current year — but a failure must stay visible
+  // even if the run had already reached it.
+  if (!state.isPlaying && !state.playError && state.selectedYear >= to) return '';
+
+  if (!state.isPlaying) {
+    const note = state.playError
+      ? `<span class="map-play__error" role="alert">${state.playError}</span>`
+      : '<span class="map-play__hint">une carte par année, pour le jour affiché</span>';
+    return `
+      <div class="map-play">
+        <button class="btn btn--sm map-play__btn" data-action="toggle-play" aria-pressed="false">
+          ▶&nbsp;Animer ${state.selectedYear} → ${to}
+        </button>
+        ${note}
+      </div>`;
+  }
+
+  const from = state.playFrom ?? state.selectedYear;
+  const span = Math.max(1, to - from);
+  const pct = Math.round(((state.selectedYear - from) / span) * 100);
+  return `
+    <div class="map-play map-play--on">
+      <button class="btn btn--sm map-play__btn" data-action="toggle-play" aria-pressed="true">
+        ⏹&nbsp;Arrêter
+      </button>
+      <span class="map-play__status" role="status">
+        ${from} → ${to} · <b class="tabular">${state.selectedYear}</b>${state.playWaiting ? ' · chargement…' : ''}
+      </span>
+      <div class="map-play__bar" aria-hidden="true"><i style="width:${pct}%"></i></div>
+    </div>`;
 }
 
 export function heatmapContainerHTML(state) {
@@ -243,6 +283,7 @@ export function heatmapContainerHTML(state) {
       <h3 class="heatmap-card__title">Cartes de France · le ${dayLabel}</h3>
       <p class="heatmap-card__sub">Comparaison des zones thermiques et températures</p>
       ${toggle}
+      ${playControlHTML(state)}
 
       <div class="france-maps france-maps--side" data-role="france-maps-container">
         <div class="france-map-col">
