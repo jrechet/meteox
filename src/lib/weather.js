@@ -24,12 +24,16 @@ function windowKey(lat, lon, mmdd, year) {
   return `mx:v3:${lat.toFixed(3)}:${lon.toFixed(3)}:${mmdd}:w${year}`;
 }
 
-function readCache(key) {
+/**
+ * @param {boolean} [immutable] settled reanalysis for a past year never changes,
+ *   so it is kept for good instead of being re-fetched every 12h.
+ */
+function readCache(key, immutable = false) {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
     const { t, data } = JSON.parse(raw);
-    if (Date.now() - t > CACHE_TTL) return null;
+    if (!immutable && Date.now() - t > CACHE_TTL) return null;
     return data;
   } catch {
     return null;
@@ -198,25 +202,60 @@ export const HEATMAP_CITIES = [
   { name: 'Ajaccio', lat: 41.9272, lon: 8.7381 }
 ];
 
+// Open-Meteo weights a request by its number of locations, so the 20-city map
+// costs ~20 calls: the free tier's 600 calls/minute allows roughly one map
+// request every two seconds. Measured the hard way — the map animation ran at
+// 225 requests/minute and got "Minutely API request limit exceeded" after nine
+// frames. A small burst stays free (page load needs two maps at once); beyond
+// that, calls are spaced. Sustained callers wait instead of being refused.
+const MAP_BURST = 4;
+const MAP_REFILL_MS = 2100;
+let mapTokens = MAP_BURST;
+let mapRefilledAt = Date.now();
+
+async function takeMapToken() {
+  for (;;) {
+    const now = Date.now();
+    const gained = Math.floor((now - mapRefilledAt) / MAP_REFILL_MS);
+    if (gained > 0) {
+      mapTokens = Math.min(MAP_BURST, mapTokens + gained);
+      mapRefilledAt += gained * MAP_REFILL_MS;
+    }
+    if (mapTokens > 0) {
+      mapTokens -= 1;
+      return;
+    }
+    await new Promise((r) => setTimeout(r, mapRefilledAt + MAP_REFILL_MS - now));
+  }
+}
+
+/**
+ * The 20-city map for one calendar day.
+ *
+ * Temperature only: the map colours and labels its dots from `tmax` and never
+ * read a weather code, but asking for `weather_code` alongside cost 1.3–3.1s per
+ * request against 0.2–0.8s without — it is derived server-side and priced like
+ * it. That is paid once per year of the map animation, so it dominated.
+ */
 export async function fetchHeatmap(mmdd, year) {
   const dateStr = `${year}-${mmdd}`;
-  const cacheKey = `mx:heatmap:${year}:${mmdd}`;
+  // v2: the stored rows no longer carry `code`, and past years are now kept
+  // without expiry — the old entries had no timestamp at all.
+  const cacheKey = `mx:heatmap:v2:${year}:${mmdd}`;
+  const isCurrentYear = year === new Date().getFullYear();
 
-  try {
-    const cached = localStorage.getItem(cacheKey);
-    if (cached) return JSON.parse(cached);
-  } catch {
-    /* ignore */
-  }
+  const cached = readCache(cacheKey, !isCurrentYear);
+  if (cached) return cached;
 
   const lats = HEATMAP_CITIES.map((c) => c.lat.toFixed(4)).join(',');
   const lons = HEATMAP_CITIES.map((c) => c.lon.toFixed(4)).join(',');
 
-  const isCurrentYear = year === new Date().getFullYear();
-  const url = isCurrentYear
-    ? `${FORECAST}?latitude=${lats}&longitude=${lons}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,weather_code&timezone=Europe%2FParis`
-    : `${ARCHIVE}?latitude=${lats}&longitude=${lons}&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max,weather_code&timezone=Europe%2FParis`;
+  const endpoint = isCurrentYear ? FORECAST : ARCHIVE;
+  const url =
+    `${endpoint}?latitude=${lats}&longitude=${lons}` +
+    `&start_date=${dateStr}&end_date=${dateStr}&daily=temperature_2m_max&timezone=Europe%2FParis`;
 
+  await takeMapToken(); // only real network calls are paced — cache hits returned above
   const res = await fetch(url);
   if (!res.ok) {
     const errText = await res.text();
@@ -226,23 +265,13 @@ export async function fetchHeatmap(mmdd, year) {
   const data = await res.json();
   const results = Array.isArray(data) ? data : [data];
 
-  const mapped = results.map((item, idx) => {
-    const tmax = item.daily?.temperature_2m_max?.[0] ?? null;
-    const code = item.daily?.weather_code?.[0] ?? null;
-    return {
-      name: HEATMAP_CITIES[idx].name,
-      lat: HEATMAP_CITIES[idx].lat,
-      lon: HEATMAP_CITIES[idx].lon,
-      tmax,
-      code,
-    };
-  });
+  const mapped = results.map((item, idx) => ({
+    name: HEATMAP_CITIES[idx].name,
+    lat: HEATMAP_CITIES[idx].lat,
+    lon: HEATMAP_CITIES[idx].lon,
+    tmax: item.daily?.temperature_2m_max?.[0] ?? null,
+  }));
 
-  try {
-    localStorage.setItem(cacheKey, JSON.stringify(mapped));
-  } catch {
-    /* ignore */
-  }
-
+  writeCache(cacheKey, mapped);
   return mapped;
 }

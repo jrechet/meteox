@@ -119,14 +119,17 @@ async function run() {
   const errors = [];
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()));
 
+  const mapRequests = []; // multi-city map calls, to police the API request rate
   const mockWeather = (p) =>
-    p.route(/open-meteo\.com|bigdatacloud\.net/, (route) =>
+    p.route(/open-meteo\.com|bigdatacloud\.net/, (route) => {
+      const url = route.request().url();
+      if (/latitude=[\d.-]+,/.test(url)) mapRequests.push(Date.now());
       route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify(mockResponse(route.request().url())),
-      }),
-    );
+        body: JSON.stringify(mockResponse(url)),
+      });
+    });
   await mockWeather(page);
 
   const overflow = () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
@@ -310,25 +313,51 @@ async function run() {
     );
     check((await page.locator('.map-play__error').count()) === 0, 'the run reports no failure');
 
-    // Cadence: frames must land on a steady beat. A stalling playhead still ends
-    // on the right year, so the check above alone would not notice.
-    await setYear(CURRENT_YEAR - 8);
-    const beats = await page.evaluate(async () => {
-      const seen = [];
-      const tick = setInterval(() => {
-        const y = document.querySelector('[data-role="rail-year"]')?.textContent;
-        if (!seen.length || seen[seen.length - 1].y !== y) seen.push({ y, t: performance.now() });
-      }, 20);
-      document.querySelector('[data-action="toggle-play"]').click();
-      await new Promise((r) => setTimeout(r, 4000));
-      clearInterval(tick);
-      document.querySelector('[data-action="toggle-play"]')?.click(); // stop
-      return seen.map((s) => Math.round(s.t));
-    });
-    const gaps = beats.slice(1).map((t, i) => t - beats[i]);
-    const worst = gaps.length ? Math.max(...gaps) : Infinity;
-    check(gaps.length >= 4, `the animation advanced ${gaps.length + 1} years in 4s`);
-    check(worst < 1500, `frames keep a steady beat (slowest ${worst}ms)`);
+    // Open-Meteo weights a request by its locations: the 20-city map costs ~20
+    // calls, so the free tier allows about 30 map requests per minute. Going
+    // faster is what got the animation refused mid-run after nine frames, so the
+    // request rate is a guarded property. Measured past the initial burst, which
+    // is deliberately allowed so page load is not slowed.
+    await setYear(1940); // widest span there is: 87 years
+    await page.waitForTimeout(600);
+    mapRequests.length = 0;
+    await page.locator('[data-action="toggle-play"]').click();
+    await page.waitForTimeout(16000);
+    await page.locator('[data-action="toggle-play"]').click(); // stop
+    const steady = mapRequests.slice(4); // drop the burst allowance
+    const perMinute = steady.length > 1
+      ? (steady.length - 1) * 60000 / (steady[steady.length - 1] - steady[0])
+      : 0;
+    check(mapRequests.length > 4, `a cold run fetches the years it plays (${mapRequests.length})`);
+    check(
+      perMinute > 0 && perMinute <= 35,
+      `sustained map requests stay within budget (${perMinute.toFixed(0)}/min, ceiling ~30)`,
+    );
+
+    // Stopping must also stop the prefetcher: an unbounded pool kept pulling the
+    // whole span after the user had walked away. A short tail is expected and
+    // bounded — the workers already queued behind the rate limiter still fire,
+    // at most one per worker, and they cache years the user just watched.
+    const afterStop = mapRequests.length;
+    await page.waitForTimeout(6000);
+    const tail = mapRequests.length - afterStop;
+    check(tail <= 4, `stopping halts the prefetcher (${tail} queued request(s) drained, max 4)`);
+
+    // A replay of already-fetched years costs nothing and runs at the animation's
+    // own beat rather than the network's.
+    await setYear(CURRENT_YEAR - 3);
+    await page.waitForTimeout(600);
+    await page.locator('[data-action="toggle-play"]').click();
+    await page.locator('.map-play--on').waitFor({ state: 'detached', timeout: 30000 });
+    mapRequests.length = 0;
+    await setYear(CURRENT_YEAR - 3);
+    await page.waitForTimeout(600);
+    const replayStart = Date.now();
+    await page.locator('[data-action="toggle-play"]').click();
+    await page.locator('.map-play--on').waitFor({ state: 'detached', timeout: 30000 });
+    const replayMs = Date.now() - replayStart;
+    check(mapRequests.length === 0, `a replay hits no API at all (${mapRequests.length} requests)`);
+    check(replayMs < 4000, `a cached replay runs at its own beat (${replayMs}ms for 4 years)`);
 
     // Stopping mid-run must leave the year it stopped on, not snap back.
     await setYear(CURRENT_YEAR - 3);
