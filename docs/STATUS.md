@@ -13,6 +13,17 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Cartes : quatre gains d'API, et un plafond structurel identifié** — 2026-08-15.
+  (1) `weather_code` n'était **jamais affiché** sur la carte mais demandé à chaque requête : **1,3–3,1 s
+  contre 0,2–0,8 s** sans lui. Supprimé. (2) Cache `mx:heatmap:v2` : les années passées (réanalyse figée)
+  sont gardées **sans expiration** → une relecture d'animation coûte **0 requête** ; l'année courante
+  garde un TTL de 12 h (avant : tout était caché pour toujours, la carte du jour ne bougeait jamais).
+  (3) Déduplication des requêtes en vol (le pool et la tête de lecture demandaient la même année).
+  (4) Le pool ne devance plus la lecture que de 6 images et se met en pause au premier échec : arrêter au
+  bout de 3 s sur 87 ans coûte **10 requêtes** au lieu de lancer toute la portée. (5) Limiteur de débit
+  (seau à jetons, rafale 4 puis 1 toutes les 2,1 s) : mesuré **29 req/min**.
+  **Plafond restant** — voir les notes de passation : une animation longue à froid ne va toujours pas au
+  bout. Décision produit à prendre.
 - **Scrutin AN : la source est enfin à côté des votes** — 2026-08-15. La facette « À l'Assemblée
   nationale » n'avait pas de pied de source : le scrutin AN n'était lié que par un **« Scrutin
   officiel » générique en bas de carte**, à côté d'un Sénat daté et sourcé sous ses barres — l'AN
@@ -122,6 +133,18 @@ Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec a
   attente au 05/08) · purge des ~515 enregistrements de runners éphémères morts (côté serveur).
 
 ## 🔑 Handoff notes (à ne pas réapprendre à la dure)
+- **L'animation longue des cartes ne passe pas à froid, et ce n'est pas un réglage à trouver.**
+  Open-Meteo pondère une requête par son **nombre de lieux** : la carte à 20 villes coûte ~20 appels sur
+  les 600/minute du palier gratuit, et **le chargement de page en consomme déjà une bonne part** (les
+  deux passes d'historique portent des dizaines de milliers de jours). Mesures du 15/08 : à 225 req/min
+  → 81 refus sur 90 ; **même ramené à 29 req/min, une animation 1940→2026 s'arrête vers 1948**
+  (« Minutely API request limit exceeded »). Les garde-fous font leur travail (arrêt propre + message),
+  mais la portée complète est hors budget. Pistes non tranchées, par ordre d'efficacité :
+  **(a)** pré-générer la donnée au build (20 villes × 87 ans pour un jour ≈ 20 ko, coût runtime nul,
+  mais impose un build quotidien) · **(b)** moins de villes pendant l'animation (poids ÷2,5) ·
+  **(c)** plafonner la portée (~20 ans) · **(d)** pas de 3–5 ans au-delà d'un certain écart.
+  Ne pas « corriger » en augmentant la concurrence : au-delà de 4 l'API répond
+  « Too many concurrent requests ».
 - **Toute nouvelle feature s'ajoute à `FEATURES` dans `test/e2e.mjs`** et doit y avoir au moins une
   vérification, sinon le run échoue (« features with no e2e check »). C'est le garde-fou contre le
   scénario du 12/08 : les cartes doubles « marchaient » en test parce que le test cliquait un jour avant

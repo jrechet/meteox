@@ -40,6 +40,9 @@ const PLAY_CONCURRENCY = 4;
 // would look like a broken animation and hammer the API on the way — stop and
 // say so instead.
 const PLAY_MAX_FAILURES = 3;
+// How far the prefetcher may run ahead of the playhead. Bounded so that stopping
+// an animation early does not leave a whole span already requested.
+const PLAY_LOOKAHEAD = 6;
 let playToken = 0;
 
 const now = new Date();
@@ -628,14 +631,27 @@ function bootRetryFooter() {
   root.querySelector('[data-action="retry"]')?.addEventListener('click', () => boot());
 }
 
+// A year already being fetched must not be fetched again: during the animation
+// the prefetch pool and the playhead ask for the same year as soon as the
+// playhead catches up, which used to send the request twice.
+const heatmapInFlight = new Map();
+
 /** Fetch one year's map into state.heatmaps without touching the DOM. */
-async function ensureHeatmapData(year, mmdd) {
+function ensureHeatmapData(year, mmdd) {
   const cacheKey = `${year}:${mmdd}`;
-  if (state.heatmaps?.[cacheKey]) return state.heatmaps[cacheKey];
-  const data = await fetchHeatmap(mmdd, year);
-  if (!state.heatmaps) state.heatmaps = {};
-  state.heatmaps[cacheKey] = data;
-  return data;
+  if (state.heatmaps?.[cacheKey]) return Promise.resolve(state.heatmaps[cacheKey]);
+  const pending = heatmapInFlight.get(cacheKey);
+  if (pending) return pending;
+
+  const request = fetchHeatmap(mmdd, year)
+    .then((data) => {
+      if (!state.heatmaps) state.heatmaps = {};
+      state.heatmaps[cacheKey] = data;
+      return data;
+    })
+    .finally(() => heatmapInFlight.delete(cacheKey));
+  heatmapInFlight.set(cacheKey, request);
+  return request;
 }
 
 async function loadHeatmap(year, mmdd) {
@@ -694,19 +710,35 @@ async function startPlayback() {
   state.playError = null;
   refreshHeatmapUI();
 
-  // prefetch pool — pulls years in playback order so the wait is always for the
-  // frame that is about to be shown
+  // Prefetch pool — pulls years in playback order so the wait is always for the
+  // frame about to be shown. Two limits keep it from becoming a burst generator:
+  //  - it never runs more than PLAY_LOOKAHEAD frames ahead of the playhead, so
+  //    stopping after a few seconds costs a few requests, not the whole span;
+  //  - the first failure parks it. Left unbounded and failure-blind, replaying
+  //    1940→today fired 90 requests in 6.7s and 81 came back refused — the pool
+  //    kept hammering while the API was already saying no.
   let next = 0;
+  let playIndex = 0;
+  let poolParked = false;
   const prefetch = async () => {
-    while (next < years.length && token === playToken) {
+    while (token === playToken && !poolParked && next < years.length) {
+      if (next > playIndex + PLAY_LOOKAHEAD) {
+        await sleep(PLAY_FRAME_MS); // far enough ahead — let the playhead catch up
+        continue;
+      }
       const year = years[next++];
-      await ensureHeatmapData(year, mmdd).catch(() => {});
+      try {
+        await ensureHeatmapData(year, mmdd);
+      } catch {
+        poolParked = true; // the playhead will retry at its own pace and report
+      }
     }
   };
   for (let i = 0; i < PLAY_CONCURRENCY; i++) prefetch();
 
   let misses = 0;
-  for (const year of years) {
+  for (const [index, year] of years.entries()) {
+    playIndex = index;
     if (token !== playToken) return;
     if (!state.heatmaps?.[`${year}:${mmdd}`]) {
       state.playWaiting = true;

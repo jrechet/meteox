@@ -317,7 +317,45 @@ describe('weather API: forecast + cache', () => {
       expect(data.length).toBe(20);
       expect(data[0].name).toBe('Lille');
       expect(data[0].tmax).toBe(20);
-      expect(data[0].code).toBe(0);
+    });
+
+    // weather_code is never rendered on the map, and asking for it cost 1.3–3.1s
+    // per request against 0.2–0.8s without — paid once per year of the animation.
+    test('asks for temperature only — the map never renders a weather code', async () => {
+      global.fetch.mockResolvedValueOnce({ ok: true, json: async () => [{ daily: { temperature_2m_max: [20] } }] });
+
+      const data = await fetchHeatmap('07-09', 1976);
+
+      expect(global.fetch.mock.calls[0][0]).toContain('daily=temperature_2m_max&');
+      expect(global.fetch.mock.calls[0][0]).not.toContain('weather_code');
+      expect(data[0]).not.toHaveProperty('code');
+    });
+
+    test('a past year is cached without expiry — settled reanalysis never moves', async () => {
+      global.fetch.mockResolvedValueOnce({ ok: true, json: async () => [{ daily: { temperature_2m_max: [20] } }] });
+      await fetchHeatmap('07-09', 1976);
+
+      // stamp the entry as very old: an immutable year must still be served
+      const key = 'mx:heatmap:v2:1976:07-09';
+      const entry = JSON.parse(localStorage.getItem(key));
+      localStorage.setItem(key, JSON.stringify({ ...entry, t: 0 }));
+
+      const again = await fetchHeatmap('07-09', 1976);
+      expect(global.fetch).toHaveBeenCalledTimes(1);
+      expect(again[0].tmax).toBe(20);
+    });
+
+    test('the current year expires — today’s map has to be able to move', async () => {
+      const currentYear = new Date().getFullYear();
+      global.fetch.mockResolvedValue({ ok: true, json: async () => [{ daily: { temperature_2m_max: [21] } }] });
+      await fetchHeatmap('07-09', currentYear);
+
+      const key = `mx:heatmap:v2:${currentYear}:07-09`;
+      const entry = JSON.parse(localStorage.getItem(key));
+      localStorage.setItem(key, JSON.stringify({ ...entry, t: Date.now() - 1000 * 60 * 60 * 24 }));
+
+      await fetchHeatmap('07-09', currentYear);
+      expect(global.fetch).toHaveBeenCalledTimes(2); // re-fetched, not served stale
     });
 
     test('successfully fetches and maps heatmap for current year using Forecast API', async () => {
@@ -343,8 +381,11 @@ describe('weather API: forecast + cache', () => {
     });
 
     test('returns cached data on cache hit', async () => {
-      const cachedData = [{ name: 'Lille', lat: 50.6292, lon: 3.0573, tmax: 25, code: 0 }];
-      localStorage.setItem('mx:heatmap:1976:07-09', JSON.stringify(cachedData));
+      const cachedData = [{ name: 'Lille', lat: 50.6292, lon: 3.0573, tmax: 25 }];
+      localStorage.setItem(
+        'mx:heatmap:v2:1976:07-09',
+        JSON.stringify({ t: Date.now(), data: cachedData }),
+      );
 
       const data = await fetchHeatmap('07-09', 1976);
       expect(global.fetch).not.toHaveBeenCalled();
@@ -399,7 +440,6 @@ describe('weather API: forecast + cache', () => {
       const data = await fetchHeatmap('07-09', 1976);
       expect(data.length).toBe(1);
       expect(data[0].tmax).toBeNull();
-      expect(data[0].code).toBeNull();
     });
   });
 });
