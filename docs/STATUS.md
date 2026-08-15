@@ -13,6 +13,16 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Scrutin AN : la source est enfin à côté des votes** — 2026-08-15. La facette « À l'Assemblée
+  nationale » n'avait pas de pied de source : le scrutin AN n'était lié que par un **« Scrutin
+  officiel » générique en bas de carte**, à côté d'un Sénat daté et sourcé sous ses barres — l'AN
+  paraissait donc sans source alors que `law.sourceUrl` **est** sa page de scrutin (la page statique,
+  elle, l'étiquetait déjà « Scrutin officiel — Assemblée nationale »). Pied commun aux deux chambres
+  (`chamberSourceHTML`) : date + lien situé. Le lien générique disparaît. Effet de bord assumé : une URL
+  refusée par `safeUrl` n'affiche plus un lien mort vers `#` — la ligne de source disparaît, conforme à
+  la règle d'or « aucune carte sans source valide ».
+- **Lien « Admin » dans le pied de page** — 2026-08-15. Aucun chemin depuis le site vers l'admin de
+  relecture ; lien construit depuis `LAWS_API_BASE`. Le back-office reste protégé (302 → OAuth GitHub).
 - **Animation des cartes : rejouer le jour choisi année après année** — 2026-08-15. Bouton
   « ▶ Animer &lt;année&gt; → &lt;année courante&gt; » sur la carte double : la carte de droite défile année par
   année (600 ms/image) pendant que celle de gauche reste la référence actuelle ; barre de progression,

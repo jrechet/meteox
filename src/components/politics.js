@@ -118,6 +118,26 @@ function chamberFacetHTML(chamberLabel, votes, groups, footer = '') {
 }
 
 /**
+ * Pied d'une facette « chambre » : date du scrutin + lien vers la page officielle
+ * de CETTE chambre. Les deux facettes le partagent : l'Assemblée n'en avait pas,
+ * son scrutin n'étant lié que par un « Scrutin officiel » générique en bas de
+ * carte — à côté d'un Sénat daté et sourcé, l'AN paraissait sans source.
+ */
+function chamberSourceHTML(dateIso, url, linkLabel) {
+  const href = safeUrl(url);
+  if (href === '#') return '';
+  const dateLabel = dateIso
+    ? `Scrutin du ${new Date(dateIso).toLocaleDateString('fr-FR')}`
+    : 'Scrutin public';
+  return `
+    <p class="chamber-vote__source">
+      <span>${escapeHtml(dateLabel)}</span>
+      <a href="${escapeHtml(href)}" target="_blank" rel="noopener" class="pcard__link pcard__link--sm">${escapeHtml(linkLabel)} ↗</a>
+    </p>
+  `;
+}
+
+/**
  * 2ᵉ facette « Au Sénat » — 3 formes exclusives renvoyées par l'API (météo Sénat) :
  *  1. scrutin public : mêmes barres/agrégats par bloc que l'AN + date + lien officiel (traçabilité) ;
  *  2. voté à main levée : mention claire (pas de scrutin public) ;
@@ -142,15 +162,7 @@ function senatFacetHTML(senat) {
   }
 
   // forme 1 : scrutin public trouvé → mêmes barres + date + lien vers la page officielle.
-  const dateLabel = senat.scrutinDate
-    ? `Scrutin du ${new Date(senat.scrutinDate).toLocaleDateString('fr-FR')}`
-    : 'Scrutin public';
-  const footer = `
-    <p class="chamber-vote__source">
-      <span>${escapeHtml(dateLabel)}</span>
-      <a href="${escapeHtml(safeUrl(senat.scrutinUrl))}" target="_blank" rel="noopener" class="pcard__link pcard__link--sm">Scrutin Sénat officiel ↗</a>
-    </p>
-  `;
+  const footer = chamberSourceHTML(senat.scrutinDate, senat.scrutinUrl, 'Scrutin Sénat officiel');
   return chamberFacetHTML('Au Sénat', senat.votes, SENAT_GROUPS, footer);
 }
 
@@ -329,14 +341,18 @@ export function politicsHTML(state) {
             <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--against"></span> Contre (C)</span>
             <span class="vote-legend__item"><span class="vote-legend__dot vote-legend__dot--abstained"></span> Abstention</span>
           </div>
-          ${chamberFacetHTML('À l\'Assemblée nationale', law.votes, AN_GROUPS)}
+          ${chamberFacetHTML(
+            'À l\'Assemblée nationale',
+            law.votes,
+            AN_GROUPS,
+            chamberSourceHTML(law.date, law.sourceUrl, 'Scrutin AN officiel'),
+          )}
           ${senatFacetHTML(law.senat)}
         </div>
       </div>
 
       <div class="pcard__actions">
         <a href="${escapeHtml(safeUrl(law.textUrl))}" target="_blank" rel="noopener" class="pcard__link">Voir le texte (.gouv) ↗</a>
-        <a href="${escapeHtml(safeUrl(law.sourceUrl))}" target="_blank" rel="noopener" class="pcard__link">Scrutin officiel ↗</a>
         ${permalinkHTML(law.id)}
       </div>
     </article>
