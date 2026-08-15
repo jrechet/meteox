@@ -260,6 +260,30 @@ describe('politicsHTML — 2ᵉ facette « Au Sénat »', () => {
     expect(html).toContain('chamber-vote--note');
   });
 
+  // L'AN n'avait pas de pied de source : son scrutin n'était lié que par un
+  // « Scrutin officiel » générique en bas de carte, si bien qu'à côté d'un Sénat
+  // daté et sourcé elle paraissait sans source.
+  test("la facette AN porte sa propre date et son lien de scrutin", () => {
+    const html = render(undefined);
+    expect(html).toContain('Scrutin AN officiel');
+    expect(html).toContain('assemblee-nationale.fr');
+    expect(html).toContain('Scrutin du'); // date du vote AN, comme au Sénat
+  });
+
+  test('chaque chambre source son propre scrutin, sans lien générique ambigu', () => {
+    const html = render({
+      hasPublicScrutin: true,
+      scrutinUrl: 'https://www.senat.fr/scrutin-public/2022/scr2022-125.html',
+      scrutinDate: '2023-02-07',
+      votes: scrutin.votes,
+    });
+    expect(html).toContain('Scrutin AN officiel');
+    expect(html).toContain('Scrutin Sénat officiel');
+    expect(html).toContain('senat.fr/scrutin-public');
+    // le lien générique de bas de carte a disparu au profit des deux liens situés
+    expect(html).not.toMatch(/>Scrutin officiel ↗</);
+  });
+
   test('forme 3 (senat absent) : aucune facette Sénat rendue', () => {
     const html = render(undefined);
     expect(html).not.toContain('Au Sénat');
@@ -276,7 +300,12 @@ describe('politicsHTML — 2ᵉ facette « Au Sénat »', () => {
       votes: scrutin.votes,
     });
     expect(html).not.toContain('javascript:alert(1)');
-    expect(html).toContain('href="#"'); // URL dangereuse neutralisée par safeUrl
+    // Une URL refusée par safeUrl ne laisse plus un lien mort « Scrutin Sénat
+    // officiel » pointant sur « # » : la ligne de source disparaît. Les votes
+    // restent affichés, mais rien ne se présente comme une source cliquable.
+    expect(html).not.toContain('Scrutin Sénat officiel');
+    expect(html).not.toContain('href="#"');
+    expect(html).toContain('Au Sénat');
     const evil = render({
       hasPublicScrutin: false,
       reason: '<img src=x onerror=alert(1)>',
