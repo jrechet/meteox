@@ -21,6 +21,7 @@ const FEATURES = [
   'période — strip & chips',
   'période — mesures & écart',
   'cartes de France',
+  'animation des cartes',
   'choix du lieu',
   'état dans l’URL',
   'lois — API up',
@@ -105,6 +106,9 @@ function mockResponse(url) {
 }
 
 const PARIS_HASH = '#lat=48.8566&lon=2.3522&name=Paris&admin=Ile-de-France';
+// Long enough for the animation to have advanced at least one frame (600ms in
+// main.js), short enough that it cannot have reached the end of a 3-year span.
+const PLAY_STOP_AFTER_MS = 900;
 
 async function run() {
   const server = await preview({ preview: { port: 5199 } });
@@ -273,6 +277,82 @@ async function run() {
       (await page.locator('.chip[data-mapmode="abs"][aria-pressed="true"]').count()) === 1,
       'the « Absolu » colouring can be selected back',
     );
+
+    // ------------------------------------------------- animation des cartes
+    // Replays the chosen day year by year. Started three years out so the run is
+    // a few frames rather than half a century.
+    start('animation des cartes');
+    await setYear(CURRENT_YEAR - 3);
+    const playBtn = page.locator('[data-action="toggle-play"]');
+    check((await playBtn.count()) === 1, 'a past year offers the animation');
+    check(
+      (await playBtn.textContent()).includes(`${CURRENT_YEAR - 3} → ${CURRENT_YEAR}`),
+      'the button announces the span it will replay',
+    );
+    await playBtn.click();
+    check((await page.locator('.map-play--on').count()) === 1, 'pressing play switches to the running state');
+    check(
+      (await page.locator('[data-action="toggle-play"][aria-pressed="true"]').count()) === 1,
+      'the control reports it is playing',
+    );
+    // The run advances on its own and ends on the current year.
+    await page.locator('.map-play--on').waitFor({ state: 'detached', timeout: 20000 });
+    check(
+      (await page.locator('[data-role="rail-year"]').textContent()) === String(CURRENT_YEAR),
+      'the animation walks the years and lands on the current year',
+    );
+    check((await page.locator('.map-play__error').count()) === 0, 'the run reports no failure');
+
+    // Cadence: frames must land on a steady beat. A stalling playhead still ends
+    // on the right year, so the check above alone would not notice.
+    await setYear(CURRENT_YEAR - 8);
+    const beats = await page.evaluate(async () => {
+      const seen = [];
+      const tick = setInterval(() => {
+        const y = document.querySelector('[data-role="rail-year"]')?.textContent;
+        if (!seen.length || seen[seen.length - 1].y !== y) seen.push({ y, t: performance.now() });
+      }, 20);
+      document.querySelector('[data-action="toggle-play"]').click();
+      await new Promise((r) => setTimeout(r, 4000));
+      clearInterval(tick);
+      document.querySelector('[data-action="toggle-play"]')?.click(); // stop
+      return seen.map((s) => Math.round(s.t));
+    });
+    const gaps = beats.slice(1).map((t, i) => t - beats[i]);
+    const worst = gaps.length ? Math.max(...gaps) : Infinity;
+    check(gaps.length >= 4, `the animation advanced ${gaps.length + 1} years in 4s`);
+    check(worst < 1500, `frames keep a steady beat (slowest ${worst}ms)`);
+
+    // Stopping mid-run must leave the year it stopped on, not snap back.
+    await setYear(CURRENT_YEAR - 3);
+    await page.locator('[data-action="toggle-play"]').click();
+    await page.waitForTimeout(PLAY_STOP_AFTER_MS);
+    await page.locator('[data-action="toggle-play"]').click();
+    check((await page.locator('.map-play--on').count()) === 0, 'pressing stop ends the animation');
+    const stoppedYear = Number(await page.locator('[data-role="rail-year"]').textContent());
+    check(
+      stoppedYear >= CURRENT_YEAR - 3 && stoppedYear <= CURRENT_YEAR,
+      `stopping keeps the year it reached (${stoppedYear})`,
+    );
+    await page.waitForTimeout(1200);
+    check(
+      Number(await page.locator('[data-role="rail-year"]').textContent()) === stoppedYear,
+      'the animation really stopped — the year no longer moves',
+    );
+
+    // Touching the slider takes over from a running animation.
+    await setYear(CURRENT_YEAR - 3);
+    await page.locator('[data-action="toggle-play"]').click();
+    await page.waitForTimeout(PLAY_STOP_AFTER_MS);
+    await setYear(1976);
+    check((await page.locator('.map-play--on').count()) === 0, 'moving the slider stops the animation');
+    check((await page.locator('[data-role="rail-year"]').textContent()) === '1976', 'the slider wins over the playhead');
+    await setYear(CURRENT_YEAR);
+    check(
+      (await page.locator('[data-action="toggle-play"]').count()) === 0,
+      'the current year offers no animation — there is nothing to replay',
+    );
+    await setYear(1976);
 
     // --------------------------------------------- période — strip & chips
     start('période — strip & chips');

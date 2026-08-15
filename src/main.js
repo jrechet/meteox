@@ -30,6 +30,18 @@ const root = document.getElementById('app');
 // the "il y a 10 ans" comparison lives), then everything back to 1940.
 const RECENT_SPAN = 30;
 
+// Map animation. One archive request per year (20 cities, one day) costs ~0.4s
+// when four run at once, so the prefetcher outruns a 600ms frame and playback
+// stays smooth after a short warm-up. Open-Meteo answers "Too many concurrent
+// requests" well before a dozen parallel calls — do not raise this blindly.
+const PLAY_FRAME_MS = 600;
+const PLAY_CONCURRENCY = 4;
+// Open-Meteo rate-limits per minute. Racing through the remaining years on error
+// would look like a broken animation and hammer the API on the way — stop and
+// say so instead.
+const PLAY_MAX_FAILURES = 3;
+let playToken = 0;
+
 const now = new Date();
 const state = {
   todayIso: isoToday(),
@@ -51,6 +63,9 @@ const state = {
   historyLoaded: false, // pass 1 (recent decades) in — chart + slider usable
   deepLoaded: false, // pass 2 (back to 1940) in — full record plotted
   dateSelected: false, // Flag indicating user explicitly selected a date in the strip
+  isPlaying: false, // map animation running, year by year up to today
+  playFrom: null, // year the running animation started on
+  playWaiting: false, // playhead is waiting on a frame the prefetcher hasn't got yet
 };
 
 // ---------- boot: geoloc first, Paris fallback ----------
@@ -82,6 +97,7 @@ async function boot() {
 
 async function load(location) {
   const token = ++loadToken;
+  stopPlayback(); // an animation belongs to the place it was started on
   state.location = location;
   render(viewLoading(`Chargement de la météo à ${location.name}…`));
   try {
@@ -301,6 +317,7 @@ function bindApp() {
   };
 
   slider?.addEventListener('input', () => {
+    stopPlayback(); // taking the slider means taking over from the animation
     const yr = Number(slider.value);
     if (yr === state.selectedYear) return;
     state.selectedYear = yr;
@@ -319,6 +336,7 @@ function bindApp() {
   const panel = root.querySelector('[data-role="machine-content"]');
   const switchMode = (mode, focusTab = false) => {
     if (mode === state.mode) return;
+    stopPlayback();
     state.mode = mode;
     if (mode !== 'politics') {
       state.lastClimatMode = mode;
@@ -417,6 +435,7 @@ function bindApp() {
   // window-length chips (period mode)
   chips?.querySelectorAll('.chip[data-win]').forEach((chip) => {
     chip.addEventListener('click', () => {
+      stopPlayback();
       const n = Number(chip.dataset.win);
       if (n === state.windowLen) return;
       state.windowLen = n;
@@ -431,6 +450,12 @@ function bindApp() {
 
   // Event delegation (content is re-rendered, so listeners live on the container)
   contentEl?.addEventListener('click', (e) => {
+    // Map animation: replay the chosen day year by year up to today.
+    if (e.target.closest('[data-action="toggle-play"]')) {
+      state.isPlaying ? stopPlayback() : startPlayback();
+      return;
+    }
+
     // Law category filters
     const filterChip = e.target.closest('[data-lawfilter]');
     if (filterChip) {
@@ -464,6 +489,7 @@ function bindApp() {
     const metricBtn = e.target.closest('.chip[data-metric]');
     if (metricBtn) {
       if (metricBtn.dataset.metric !== state.periodMetric) {
+        stopPlayback();
         state.periodMetric = metricBtn.dataset.metric;
         renderContent();
         refreshMaps();
@@ -485,6 +511,7 @@ function bindApp() {
     if (pcol) {
       const date = pcol.dataset.date;
       if (date) {
+        stopPlayback(); // the animation is bound to one day — a new day restarts it
         state.selectedIso = date;
         state.dateSelected = true;
         renderContent();
@@ -601,10 +628,19 @@ function bootRetryFooter() {
   root.querySelector('[data-action="retry"]')?.addEventListener('click', () => boot());
 }
 
+/** Fetch one year's map into state.heatmaps without touching the DOM. */
+async function ensureHeatmapData(year, mmdd) {
+  const cacheKey = `${year}:${mmdd}`;
+  if (state.heatmaps?.[cacheKey]) return state.heatmaps[cacheKey];
+  const data = await fetchHeatmap(mmdd, year);
+  if (!state.heatmaps) state.heatmaps = {};
+  state.heatmaps[cacheKey] = data;
+  return data;
+}
+
 async function loadHeatmap(year, mmdd) {
   if (!mmdd) mmdd = monthDay(isoToDate(state.selectedIso));
-  const cacheKey = `${year}:${mmdd}`;
-  if (state.heatmaps?.[cacheKey]) {
+  if (state.heatmaps?.[`${year}:${mmdd}`]) {
     refreshHeatmapUI();
     return;
   }
@@ -613,15 +649,114 @@ async function loadHeatmap(year, mmdd) {
   if (mapsContainer) mapsContainer.classList.add('map-loading');
 
   try {
-    const data = await fetchHeatmap(mmdd, year);
-    if (!state.heatmaps) state.heatmaps = {};
-    state.heatmaps[cacheKey] = data;
-
-    refreshHeatmapUI();
+    await ensureHeatmapData(year, mmdd);
   } catch (err) {
     console.warn(`Failed to load heatmap for ${year}:${mmdd}`, err);
+  }
+  refreshHeatmapUI();
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Move the year controls without re-rendering the whole panel. */
+function syncYearControls(year) {
+  const slider = root.querySelector('[data-role="slider"]');
+  const railYear = root.querySelector('[data-role="rail-year"]');
+  if (slider) {
+    slider.value = String(year);
+    slider.setAttribute('aria-valuenow', String(year));
+  }
+  if (railYear) railYear.textContent = String(year);
+}
+
+/**
+ * Replay the selected calendar day year by year, from the selected year to today.
+ *
+ * Frames are fetched by a small worker pool running ahead of the playhead, so
+ * playback is smooth once a couple of years are in and instant on a replay
+ * (fetchHeatmap caches each year in localStorage). Only the maps and the year
+ * controls move — re-rendering the whole panel every frame would fight the
+ * slider and put the "Période" strip into a loading state 50 times over.
+ */
+async function startPlayback() {
+  const from = state.selectedYear;
+  const to = state.currentYear;
+  if (state.isPlaying || from >= to) return;
+
+  const mmdd = monthDay(isoToDate(state.selectedIso));
+  const years = [];
+  for (let y = from; y <= to; y++) years.push(y);
+
+  const token = ++playToken;
+  state.isPlaying = true;
+  state.playFrom = from;
+  state.playWaiting = false;
+  state.playError = null;
+  refreshHeatmapUI();
+
+  // prefetch pool — pulls years in playback order so the wait is always for the
+  // frame that is about to be shown
+  let next = 0;
+  const prefetch = async () => {
+    while (next < years.length && token === playToken) {
+      const year = years[next++];
+      await ensureHeatmapData(year, mmdd).catch(() => {});
+    }
+  };
+  for (let i = 0; i < PLAY_CONCURRENCY; i++) prefetch();
+
+  let misses = 0;
+  for (const year of years) {
+    if (token !== playToken) return;
+    if (!state.heatmaps?.[`${year}:${mmdd}`]) {
+      state.playWaiting = true;
+      refreshHeatmapUI();
+      try {
+        await ensureHeatmapData(year, mmdd);
+        misses = 0;
+      } catch (err) {
+        if (token !== playToken) return;
+        if (++misses >= PLAY_MAX_FAILURES) {
+          console.warn('Map animation stopped — heatmap unavailable:', err);
+          state.playError = 'Données indisponibles pour le moment. Réessayez dans une minute.';
+          break;
+        }
+        // Skip this year but keep the cadence: racing ahead on failure both
+        // looks broken and turns a rate limit into a burst of doomed requests.
+        state.playWaiting = false;
+        refreshHeatmapUI();
+        await sleep(PLAY_FRAME_MS);
+        continue;
+      }
+      if (token !== playToken) return;
+      state.playWaiting = false;
+    }
+    state.selectedYear = year;
+    syncYearControls(year);
+    refreshHeatmapUI();
+    await sleep(PLAY_FRAME_MS);
+  }
+  if (token === playToken) {
+    const message = state.playError;
+    stopPlayback();
+    state.playError = message; // survives the stop so the failure stays on screen
     refreshHeatmapUI();
   }
+}
+
+/** Stop the animation and let the rest of the panel catch up with the year it left on. */
+function stopPlayback() {
+  if (!state.isPlaying) return;
+  playToken++; // invalidates the running loop and its prefetch pool
+  state.isPlaying = false;
+  state.playWaiting = false;
+  state.playError = null;
+  syncUrl();
+  const contentEl = root.querySelector('[data-role="machine-content"]');
+  if (contentEl?.isConnected && state.mode !== 'politics') {
+    contentEl.innerHTML = machineContentHTML(state, derive(state));
+  }
+  ensureYearDetail(state.selectedYear);
 }
 
 // ---------- scroll reveal ----------

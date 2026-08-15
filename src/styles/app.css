@@ -541,6 +541,52 @@
   justify-content: center;
   margin: 0 auto var(--space-3);
 }
+
+/* --- Map animation: replay the day year by year --- */
+.map-play {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem 0.75rem;
+  margin: 0 auto var(--space-3);
+  max-width: 100%;
+}
+.map-play__btn {
+  white-space: nowrap;
+}
+.map-play__hint,
+.map-play__status {
+  font-size: var(--text-sm);
+  color: var(--color-ink-faint);
+}
+.map-play__status b {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+.map-play__error {
+  font-size: var(--text-sm);
+  color: var(--color-accent-ink);
+}
+/* The bar takes the full row so the button and the year stay on the line above. */
+.map-play__bar {
+  flex: 1 0 100%;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--color-line);
+  overflow: hidden;
+}
+.map-play__bar i {
+  display: block;
+  height: 100%;
+  background: var(--color-accent);
+  transition: width var(--dur-fast) linear;
+}
+@media (prefers-reduced-motion: reduce) {
+  .map-play__bar i {
+    transition: none;
+  }
+}
 .period {
   padding: clamp(1.2rem, 0.8rem + 2vw, 2rem);
   border-radius: var(--radius-lg);
