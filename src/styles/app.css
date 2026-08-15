@@ -833,6 +833,20 @@ footer.foot {
 .foot a {
   color: var(--color-ink-soft);
 }
+/* Back-office entry point: reachable, but not competing with the site's content. */
+.foot__admin {
+  text-decoration: none;
+  border: 1px solid var(--color-line);
+  border-radius: 999px;
+  padding: 0.15rem 0.7rem;
+  font-size: var(--text-xs);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.foot__admin:hover {
+  border-color: var(--color-line-strong);
+  color: var(--color-ink);
+}
 
 /* reveal */
 .reveal {

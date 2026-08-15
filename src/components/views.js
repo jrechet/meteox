@@ -9,6 +9,7 @@ import { periodHTML } from './period.js';
 import { heatmapContainerHTML, showsDualMaps } from './heatmap.js';
 import { politicsHTML } from './politics.js';
 import { ARCHIVE_START_YEAR } from '../lib/weather.js';
+import { LAWS_API_BASE } from '../lib/laws-data.js';
 
 export function viewLoading(msg = 'Localisation en cours…') {
   return `<div class="state" role="status">
@@ -296,6 +297,7 @@ export function viewApp(state) {
     <footer class="foot">
       <span>Données&nbsp;: <a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a> · réanalyse ERA5 &amp; prévision</span>
       <span>${state.location.name}, ${state.location.admin} · ${state.location.lat.toFixed(2)}, ${state.location.lon.toFixed(2)}</span>
+      <span><a class="foot__admin" href="${LAWS_API_BASE}/admin.html" target="_blank" rel="noopener">Admin</a></span>
     </footer>
   </main>`;
 }

@@ -163,6 +163,13 @@ async function run() {
       'a visit with no shared link still resolves a place',
     );
     check((await page.locator('.state[role="alert"]').count()) === 0, 'no error state on a cold first visit');
+    const adminLink = page.locator('.foot__admin');
+    check((await adminLink.count()) === 1, 'the footer offers a way into the admin');
+    check(
+      (await adminLink.getAttribute('href')) === 'https://jrec.fr/meteox-laws-int/admin.html',
+      'the admin link points at the back office',
+    );
+    check((await adminLink.getAttribute('rel')) === 'noopener', 'the admin link opens safely');
 
     await bootTo(PARIS_HASH);
     check((await page.locator('.vignette').count()) === 3, 'the hero renders its three vignettes');
