@@ -10,3 +10,6 @@ coverage/
 /setup.sh
 /unapi.sh
 /api.world.md
+
+# Séries brutes du générateur de cartes (permet de reprendre une génération)
+.cache/

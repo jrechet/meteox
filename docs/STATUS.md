@@ -13,6 +13,15 @@ ou `X-Admin-Token`). Dernier changement applicatif : PR #59 (`d89932c`) ; l'imag
 Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec auteur, ~92 cosignés).
 
 ## ✅ Done recently
+- **Archive pré-générée des cartes : l'animation ne touche plus Open-Meteo** — 2026-08-15. Le plafond
+  identifié plus bas (une image = une requête pondérée par ses 20 lieux → 1940→aujourd'hui hors budget,
+  arrêt vers 1948) est levé en **inversant la découpe** : au build on demande **une requête par ville**
+  couvrant toute la série (20 requêtes au lieu de 87 par animation), réparties en **366 fichiers de
+  ~10 ko** (`public/data/heatmap/MM-DD.json`, ~3,4 Mo au total). L'app n'en charge **qu'un** — celui du
+  jour affiché — et rejoue toute la portée sans un seul appel API. Repli conservé : l'année en cours
+  (incomplète, jamais dans l'archive) et les années postérieures à la dernière génération passent par
+  l'API. Régénération **annuelle** (`refresh-heatmap-archive.yml`, cron 5 janvier) et **déclenchable à la
+  main** — les années passées étant de la réanalyse figée, elles ne bougent plus.
 - **Cartes : quatre gains d'API, et un plafond structurel identifié** — 2026-08-15.
   (1) `weather_code` n'était **jamais affiché** sur la carte mais demandé à chaque requête : **1,3–3,1 s
   contre 0,2–0,8 s** sans lui. Supprimé. (2) Cache `mx:heatmap:v2` : les années passées (réanalyse figée)
@@ -133,7 +142,13 @@ Data : 11 lois publiées (7 « à venir »), 161 dossiers candidats (~123 avec a
   attente au 05/08) · purge des ~515 enregistrements de runners éphémères morts (côté serveur).
 
 ## 🔑 Handoff notes (à ne pas réapprendre à la dure)
-- **L'animation longue des cartes ne passe pas à froid, et ce n'est pas un réglage à trouver.**
+- **L'archive des cartes se régénère avec `npm run generate:heatmap-archive`** (~15-25 min : 20 requêtes
+  très lourdes, ~31 000 jours chacune, à concurrence 4 avec backoff sur les limites de débit). À lancer
+  via le workflow `refresh-heatmap-archive` (annuel ou `workflow_dispatch`), **pas** dans le build : ce
+  serait 20 min ajoutées à chaque déploiement et un build cassé si Open-Meteo tousse. Ne pas monter la
+  concurrence au-delà de 4 (« Too many concurrent requests »).
+- **[RÉSOLU par l'archive pré-générée]** L'animation longue ne passait pas à froid, et ce n'était pas un
+  réglage à trouver — on garde le raisonnement, il explique le repli API qui subsiste :
   Open-Meteo pondère une requête par son **nombre de lieux** : la carte à 20 villes coûte ~20 appels sur
   les 600/minute du palier gratuit, et **le chargement de page en consomme déjà une bonne part** (les
   deux passes d'historique portent des dizaines de milliers de jours). Mesures du 15/08 : à 225 req/min

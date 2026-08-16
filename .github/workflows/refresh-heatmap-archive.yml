@@ -1,0 +1,46 @@
+# Régénère les cartes pré-calculées de l'animation (public/data/heatmap/).
+# Les années passées sont de la réanalyse ERA5 figée : elles ne bougent plus.
+# Une passe annuelle suffit donc à intégrer l'année qui vient de s'achever ;
+# entre-temps l'app complète les années manquantes via l'API, et l'année en
+# cours est de toute façon toujours servie en direct.
+name: Refresh heatmap archive (yearly)
+
+on:
+  schedule:
+    # 5 janvier : l'année précédente est close et publiée dans ERA5.
+    - cron: '0 4 5 1 *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: heatmap-archive
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    # 20 requêtes lentes (une série complète par ville), étalées à concurrence 4.
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run generate:heatmap-archive
+      - name: Vérifier que l'app lit bien l'archive régénérée
+        run: npm test
+      - name: Commit si la couverture a changé
+        run: |
+          if git diff --quiet -- public/data/heatmap; then
+            echo "Archive déjà à jour — rien à committer."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/data/heatmap
+          git commit -m "chore(cartes): régénérer l'archive des cartes d'animation"
+          git push

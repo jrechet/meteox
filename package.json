@@ -12,7 +12,8 @@
     "test:e2e": "npm run build && node test/e2e.mjs",
     "check:sources": "node scripts/check-sources.mjs",
     "generate:snapshot": "node scripts/generate-snapshot.mjs",
-    "generate:pages": "node scripts/generate-law-pages.mjs"
+    "generate:pages": "node scripts/generate-law-pages.mjs",
+    "generate:heatmap-archive": "node scripts/generate-heatmap-archive.mjs"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "^4.0.0",
