@@ -202,6 +202,44 @@ export const HEATMAP_CITIES = [
   { name: 'Ajaccio', lat: 41.9272, lon: 8.7381 }
 ];
 
+/**
+ * Pre-generated map archive: one ~10 kB file per calendar day holding every
+ * year since 1940 for the 20 cities (scripts/generate-heatmap-archive.mjs,
+ * refreshed yearly). The animation reads its frames from here and never touches
+ * Open-Meteo — replaying 1940→today used to need 87 weighted requests, which the
+ * free tier refuses partway through.
+ *
+ * Memoised per calendar day, including the miss: a deployment whose archive has
+ * not been generated yet must not re-request the file for every frame.
+ */
+const archiveByDay = new Map();
+
+function archiveUrlFor(mmdd) {
+  const base = import.meta.env?.BASE_URL || '/';
+  return `${base}data/heatmap/${mmdd}.json`;
+}
+
+function loadDayArchive(mmdd) {
+  if (archiveByDay.has(mmdd)) return archiveByDay.get(mmdd);
+  const request = fetch(archiveUrlFor(mmdd))
+    .then((res) => (res.ok ? res.json() : null))
+    .then((data) => (data && Array.isArray(data.t) ? data : null))
+    .catch(() => null); // absent or unreadable → the API path still works
+  archiveByDay.set(mmdd, request);
+  return request;
+}
+
+/** The archive row for one year, shaped like a fetchHeatmap result, or null. */
+function heatmapFromArchive(archive, year) {
+  if (!archive) return null;
+  const row = archive.t[year - archive.from];
+  if (!row) return null;
+  return archive.cities.map((name, i) => {
+    const city = HEATMAP_CITIES.find((c) => c.name === name);
+    return { name, lat: city?.lat, lon: city?.lon, tmax: row[i] ?? null };
+  });
+}
+
 // Open-Meteo weights a request by its number of locations, so the 20-city map
 // costs ~20 calls: the free tier's 600 calls/minute allows roughly one map
 // request every two seconds. Measured the hard way — the map animation ran at
@@ -212,6 +250,15 @@ const MAP_BURST = 4;
 const MAP_REFILL_MS = 2100;
 let mapTokens = MAP_BURST;
 let mapRefilledAt = Date.now();
+
+/**
+ * Refill the bucket. Tests exercise the fallback path far faster than a browser
+ * ever would and would otherwise sit through the real spacing between cases.
+ */
+export function resetMapRateLimit() {
+  mapTokens = MAP_BURST;
+  mapRefilledAt = Date.now();
+}
 
 async function takeMapToken() {
   for (;;) {
@@ -246,6 +293,17 @@ export async function fetchHeatmap(mmdd, year) {
 
   const cached = readCache(cacheKey, !isCurrentYear);
   if (cached) return cached;
+
+  // Past years come from the pre-generated archive — free, and the only way the
+  // long animation can run at all. The current year is never in it (incomplete)
+  // and neither are years added since the last refresh: those fall through.
+  if (!isCurrentYear) {
+    const fromArchive = heatmapFromArchive(await loadDayArchive(mmdd), year);
+    if (fromArchive) {
+      writeCache(cacheKey, fromArchive);
+      return fromArchive;
+    }
+  }
 
   const lats = HEATMAP_CITIES.map((c) => c.lat.toFixed(4)).join(',');
   const lons = HEATMAP_CITIES.map((c) => c.lon.toFixed(4)).join(',');

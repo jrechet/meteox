@@ -147,8 +147,15 @@ Le travail d'infrastructure et d'interface utilisateur est **extrêmement avanc�
    * `fetchYearWindow(lat, lon, mmdd, year)` récupère **à la demande** les 30 jours se terminant sur ce
      jour calendaire, avec les 5 variables : c'est la source du bandeau « Période » et des champs
      pluie/vent/code météo de la carte focus et de la vignette « il y a 10 ans ».
-   * ⚠️ Open-Meteo facture au **poids** (variables × jours) : élargir la série longue à une variable de
-     plus coûte bien plus cher que d'ajouter une requête. Voir les notes de passation de `docs/STATUS.md`.
+   * ⚠️ Open-Meteo facture au **poids** (variables × jours, **et nombre de lieux**) : élargir la série
+     longue à une variable de plus coûte bien plus cher que d'ajouter une requête. Voir les notes de
+     passation de `docs/STATUS.md`.
+   * `fetchHeatmap(mmdd, year)` sert les **années passées depuis l'archive pré-générée**
+     (`public/data/heatmap/MM-DD.json`, un fichier ~10 ko par jour calendaire, 366 en tout) : c'est ce
+     qui permet à l'animation de rejouer 1940→aujourd'hui **sans un seul appel API**. L'API n'est
+     sollicitée que pour l'année en cours et les années postérieures à la dernière génération.
+     Régénération : `npm run generate:heatmap-archive` (workflow annuel `refresh-heatmap-archive`,
+     aussi déclenchable à la main) — **jamais dans le build**, c'est 15-25 min.
 3. **Mise en place de l'UI** :
    * Des onglets **Jour même** et **Période** ont été ajoutés pour alterner entre le focus historique standard et la comparaison de fenêtres multi-jours.
    * Des boutons de sélection (puces/chips) permettent de choisir des périodes de **5**, **10** ou **30 jours**.
