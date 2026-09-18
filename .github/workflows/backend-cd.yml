@@ -17,7 +17,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # Même barrière que sur les PR (backend-ci.yml) : une seule définition, donc un push sur main
+  # est retesté avant d'être packagé (build-push ci-dessous fait un package -DskipTests).
+  test:
+    uses: ./.github/workflows/backend-ci.yml
+
   build-push:
+    needs: test
     runs-on: ubuntu-latest
     permissions:
       contents: read
