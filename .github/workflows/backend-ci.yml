@@ -1,18 +1,14 @@
 name: backend-ci
 
 on:
-  push:
+  pull_request:
     paths:
       - "backend/**"
       - ".github/workflows/backend-ci.yml"
       # LawsApiTest / IndicatorExtractorContractTest diffent l'API contre ce snapshot :
       # une modif du snapshot (côté front) doit re-déclencher les tests backend.
       - "src/data/laws-snapshot.json"
-  pull_request:
-    paths:
-      - "backend/**"
-      - ".github/workflows/backend-ci.yml"
-      - "src/data/laws-snapshot.json"
+  workflow_call:
 
 jobs:
   build-and-test:
