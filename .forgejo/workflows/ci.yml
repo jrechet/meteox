@@ -50,7 +50,14 @@ jobs:
           cache: npm
       - run: npm ci
       # Snapshot des lois regenere depuis l API backend (fallback : snapshot committe).
+      # Sur la forge, l API (https://jrec.fr/meteox-laws-int) est injoignable : les jobs
+      # sortent par docker_gwbridge (ICC desactive), qui ne peut pas rejoindre l ingress
+      # Swarm de Traefik sur l IP publique du meme serveur (timeout, run forge 1). Le
+      # snapshot committe sert donc de source, sans seuil de fraicheur : la forge ne
+      # deploie rien, et le seuil de 30 j reste applique sur GitHub.
       - run: npm run generate:snapshot
+        env:
+          SNAPSHOT_MAX_AGE_DAYS: "36500"
       - run: npm test
       - run: npm run check:sources
       - run: npx playwright install chromium
