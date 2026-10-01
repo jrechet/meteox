@@ -128,6 +128,27 @@ Le déploiement est entièrement automatisé via un workflow GitHub Actions (`.g
 
 ---
 
+## 6 bis. CI/CD disponibles
+
+Le dépôt est hybride : il vit sur GitHub (référence) et sur la forge Forgejo
+`https://forge.jrec.fr/jrechet/meteox` (suiveur).
+
+- **GitHub Actions** (`.github/workflows/`) : `backend-ci.yml` et `front-ci.yml` (CI de PR sur
+  `ubuntu-latest` : dépôt public, jamais de runner self-hosted pour la CI de PR), `deploy.yml`
+  (GitHub Pages) et `backend-cd.yml` (déploiement backend), `backend-logs.yml`,
+  `check-sources.yml` et `refresh-heatmap-archive.yml` (planifiés). Seul GitHub déploie.
+  Suivi d'un run : `gh run list --branch <branche>`, `gh run view <id> --log-failed`.
+- **Forge** : `.github/workflows/mirror-to-forge.yml` recopie chaque branche et tag sur la forge
+  (secret `FORGE_TOKEN`, posé par le propriétaire). La forge n'exécute que
+  `.forgejo/workflows/ci.yml` (jobs `backend` puis `front`, enchaînés, sur
+  `[self-hosted, jre-server]`, mêmes commandes que backend-ci et front-ci) : jamais de
+  déploiement, de logs ni de tâche planifiée. Ne pas y ajouter d'action propre à GitHub.
+  Suivi : `ssh jrec.fr '~/dev/server-app/forgejo/forge-tool.sh runs meteox'`.
+- **Un seul endroit déploie** : GitHub, tant qu'il reste la référence. Une modification de la CI
+  se fait des deux côtés (`backend-ci.yml`/`front-ci.yml` et `.forgejo/workflows/ci.yml`).
+
+---
+
 ## 7. Fonctionnalité : Comparaison de Période Historique
 
 ### Objectif initial :
