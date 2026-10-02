@@ -1,0 +1,64 @@
+# CI de la forge forge.jrec.fr (Forgejo Actions). Pendant de backend-ci.yml et front-ci.yml :
+# memes commandes Maven et npm, SANS les workflows de deploiement (deploy.yml, backend-cd.yml),
+# de logs (backend-logs.yml) ni planifies (check-sources.yml, refresh-heatmap-archive.yml) :
+# GitHub reste la seule plateforme qui deploie.
+# La presence de ce dossier fait ignorer .github/workflows/ par Forgejo.
+# Les deux jobs s enchainent au lieu de tourner en parallele : le serveur (disques
+# mecaniques) heberge aussi la prod et les runners GitHub.
+# Les actions hors `actions/*` portent leur URL complete (resolution sur github.com).
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  backend:
+    runs-on: [self-hosted, jre-server]
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Build & tests (inclut le diff GET /api/laws vs src/lib/laws.js)
+        working-directory: backend
+        run: ./mvnw -B verify
+
+  front:
+    needs: backend
+    runs-on: [self-hosted, jre-server]
+    # Image Playwright de la meme version que package-lock.json : Chromium et ses
+    # dependances systeme sont deja la, pas d apt-get (tres lent sur ces disques).
+    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Snapshot des lois regenere depuis l API backend (fallback : snapshot committe).
+      # Sur la forge, l API (https://jrec.fr/meteox-laws-int) est injoignable : les jobs
+      # sortent par docker_gwbridge (ICC desactive), qui ne peut pas rejoindre l ingress
+      # Swarm de Traefik sur l IP publique du meme serveur (timeout, run forge 1). Le
+      # snapshot committe sert donc de source, sans seuil de fraicheur : la forge ne
+      # deploie rien, et le seuil de 30 j reste applique sur GitHub.
+      - run: npm run generate:snapshot
+        env:
+          SNAPSHOT_MAX_AGE_DAYS: "36500"
+      - run: npm test
+      - run: npm run check:sources
+      - run: npx playwright install chromium
+      - run: npm run test:e2e
