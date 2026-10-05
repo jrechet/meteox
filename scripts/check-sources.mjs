@@ -25,7 +25,16 @@ function normalize(html) {
     .toLowerCase();
 }
 
-async function checkUrl(url, expectFragment) {
+// Erreurs passagères du site source (surcharge, réseau) : on réessaie avant de conclure.
+// Un lien réellement invalide (404, fragment absent) échoue dès la première tentative.
+const RETRY_DELAYS_MS = [5000, 15000];
+const isTransient = (reason) =>
+  reason === 'timeout' ||
+  /^HTTP (429|5\d\d)$/.test(reason) ||
+  // erreur réseau (fetch failed, ECONNRESET…) : ni code HTTP ni contenu reçu
+  !/^(HTTP |200 )/.test(reason);
+
+async function checkUrlOnce(url, expectFragment) {
   try {
     const res = await fetch(url, {
       redirect: 'follow',
@@ -41,6 +50,17 @@ async function checkUrl(url, expectFragment) {
   } catch (e) {
     return { ok: false, reason: e.name === 'TimeoutError' ? 'timeout' : e.message };
   }
+}
+
+async function checkUrl(url, expectFragment) {
+  let result = await checkUrlOnce(url, expectFragment);
+  for (const delay of RETRY_DELAYS_MS) {
+    if (result.ok || !isTransient(result.reason)) break;
+    console.log(`  … ${url} → ${result.reason}, nouvel essai dans ${delay / 1000} s`);
+    await new Promise((resolve) => setTimeout(resolve, delay));
+    result = await checkUrlOnce(url, expectFragment);
+  }
+  return result;
 }
 
 let failures = 0;
