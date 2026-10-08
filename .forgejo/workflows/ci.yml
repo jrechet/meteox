@@ -40,7 +40,7 @@ jobs:
     runs-on: [self-hosted, jre-server]
     # Image Playwright de la meme version que package-lock.json : Chromium et ses
     # dependances systeme sont deja la, pas d apt-get (tres lent sur ces disques).
-    container: mcr.microsoft.com/playwright:v1.63.0-noble
+    container: mcr.microsoft.com/playwright:v1.64.0-noble
     timeout-minutes: 40
     steps:
       - uses: actions/checkout@v7
